@@ -1,5 +1,7 @@
 # CAPPAN — Coffee & More · Home Study
 
+**Repo:** https://github.com/cappannguyen-0901/cappanwebdemo
+
 Web quán cà phê CAPPAN: đặt bàn theo sơ đồ, gọi món, giỏ hàng, theo dõi đơn, khuyến mãi,
 **thu ngân tại quầy**, 9 trang nhân viên và trợ lý AI tiếng Việt.
 
