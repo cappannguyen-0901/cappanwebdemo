@@ -102,8 +102,9 @@ Thứ tự dùng trong Pippit:
 
 ## 4. Tài sản thương hiệu
 
-- **Logo SVG:** `logo-cappan.svg`
-- **Logo PNG trong suốt:** `logo-cappan.png` — 1024×1024
+- **Logo SVG:** `logo-cappan.svg` — wrapper của logo mới
+- **Logo PNG:** `logo-cappan.png` — 1024×1024, nền tối theo đúng ảnh gốc
+- **Ảnh gốc:** `logo-cappan-original.png`
 - **Màu chính:**
   - Nâu cà phê `#6F4E37`
   - Nâu đậm `#3E2723` / `#2A1A14`
