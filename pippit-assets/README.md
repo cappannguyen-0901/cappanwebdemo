@@ -4,7 +4,7 @@ Bộ ảnh giao diện sạch, chụp trực tiếp từ bản demo CAPPAN, dùn
 
 ## 1. Ảnh giao diện
 
-Tất cả ảnh là **PNG, 2400×1350, tỷ lệ 16:9**, chụp đúng khung màn hình, không cắt.
+8 ảnh giao diện là **PNG, 2400×1350, tỷ lệ 16:9**, chụp đúng khung màn hình, không cắt. Poster Facebook là ảnh dọc **2160×2700, tỷ lệ 4:5**.
 
 | Tệp | Màn hình | Nội dung chính |
 |---|---|---|
@@ -16,8 +16,9 @@ Tất cả ảnh là **PNG, 2400×1350, tỷ lệ 16:9**, chụp đúng khung m�
 | `06-xac-nhan.png` | Xác nhận thành công | “Thanh toán cọc thành công!”, A1, 19:00 05/11/2026, cọc 35.000đ |
 | `07-dashboard.png` | Dashboard vận hành | KPI 32 chỗ, 31 trống, 1 đang giữ; sơ đồ bàn A1 |
 | `08-pos.png` | POS | 2 Cà phê sữa + 1 Trà đào = 115.000đ; khách đưa 200.000đ; thối 85.000đ |
+| `09-poster-3-tinh-nang.png` | Poster Facebook (4:5) | “Một khung chat. Ba việc.” — 3 tính năng, ảnh UI thật, CTA CAPPAN |
 
-Ảnh đã ẩn banner “Bản demo”, toast và các nút debug. Giữ nguyên header, nav, chat launcher và nội dung sản phẩm.
+Ảnh giao diện 16:9 đã ẩn banner “Bản demo”, toast và các nút debug. Giữ nguyên header, nav, chat launcher và nội dung sản phẩm. Poster `09-...` là ảnh dọc **2160×2700 (4:5)**, dùng cho bài đăng Facebook.
 
 > Prompt gợi ý để dán trực tiếp vào Pippit: `pippit-prompt.md`.
 
