@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Giỏ hàng – CAPPAN</title>
+<!-- CAPPAN head chuẩn hoá -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:title" content="CAPPAN – Coffee & More">
+<meta property="og:description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="dark-mode.css">
+<!-- Nhúng file CSS mới ở cuối cùng để đè lên tất cả -->
+<link rel="stylesheet" href="card-premium.css"> 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="ui-polish.css">
+<script>
+(function(){try{if(!/\/staff-/.test(location.pathname))document.documentElement.classList.add('chat-guest');if(localStorage.getItem('cappan_chat_is_open')==='1')document.documentElement.setAttribute('data-chat-open','1');}catch(e){}})();
+</script>
+</head>
+<body data-page="cart">
+
+<header class="app-header">
+  <a class="logo" href="index.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Coffee &amp; More - Home Study</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav">
+    <ul class="nav-list">
+      <li><a href="index.html">Trang chủ</a></li>
+      <li><a href="menu.html">Thực đơn</a></li>
+      <li><a href="booking.html">Đặt chỗ</a></li>
+      <li><a href="order.html">Đặt nước</a></li>
+      <li><a href="tracking.html">Theo dõi đơn</a></li>
+      <li><a href="contact.html">Liên hệ</a></li>
+    </ul>
+    <div class="user-area" id="userArea"></div>
+    <button class="theme-toggle" aria-label="Chuyển chế độ sáng/tối" id="themeToggle" onclick="toggleDarkMode()" title="Chuyển chế độ Sáng/Tối">🌙</button>
+  </nav>
+</header>
+
+<section class="section">
+  <h2 class="section-title">🛒 Giỏ Hàng Của Bạn</h2>
+  <p class="section-sub">Kiểm tra món — điền thông tin — đặt hàng</p>
+
+  <div id="cartEmpty" class="empty-state" hidden>
+    <div class="empty-icon">🛒</div>
+    <p>Giỏ hàng của bạn đang trống.</p>
+    <a href="order.html" class="btn">Đặt nước ngay</a>
+  </div>
+
+  <div id="cartContent" class="cart-layout" hidden>
+    <div class="cart-items-panel">
+      <div class="panel-header-simple">
+        <h3>Danh sách món (<span id="cartItemCount">0</span>)</h3>
+        <button class="btn-clear" onclick="clearCart()">🗑️ Xoá tất cả</button>
+      </div>
+      <div id="cartItemsList"></div>
+    </div>
+
+    <aside class="cart-checkout">
+      <h3>Thông tin giao hàng</h3>
+
+      <div class="form-group">
+        <label>Họ và tên *</label>
+        <input type="text" id="coName" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label>Số điện thoại *</label>
+        <input type="tel" id="coPhone" placeholder="0909123456">
+      </div>
+      <div class="form-group">
+        <label>Địa chỉ giao hàng *</label>
+        <input type="text" id="coAddress" placeholder="Số nhà, đường, quận...">
+      </div>
+      <div class="form-group">
+        <label>Ghi chú</label>
+        <textarea id="coNote" rows="2" placeholder="Ít đá, ít đường..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Mã khuyến mãi</label>
+        <div class="promo-row">
+          <input type="text" id="coPromo" placeholder="VD: CAFE20" maxlength="20" autocomplete="off">
+          <button type="button" class="btn-outline" onclick="applyPromo()">Áp dụng</button>
+        </div>
+        <div class="promo-msg" id="promoMsg" role="status"></div>
+        <small id="promoHint" style="color:var(--gray)"></small>
+      </div>
+            <!-- ⚡ FREESHIP PROGRESS BAR -->
+      <div id="freeshipBar" style="padding:12px; border-radius:8px; margin-bottom:15px; display:none; border: 1px solid transparent;">
+        <div style="font-size:0.85rem; color:#1565c0; margin-bottom:8px;" id="freeshipText"></div>
+        <div style="width:100%; height:8px; background:#cce5ff; border-radius:4px; overflow:hidden;">
+          <div id="freeshipFill" style="height:100%; width:0%; background:#2196f3; border-radius:4px; transition:width 0.4s ease;"></div>
+        </div>
+      </div>
+
+      <div class="checkout-summary">
+        <div class="summary-row">
+          <span>Tạm tính</span>
+          <span id="sumSubtotal">0đ</span>
+        </div>
+        <div class="summary-row">
+          <span>Phí giao hàng</span>
+          <span id="sumShipping">15.000đ</span>
+        </div>
+        <div class="summary-row discount" id="sumDiscountRow" style="display:none">
+          <span>Giảm giá <small id="sumPromoCode"></small></span>
+          <span id="sumDiscount">-0đ</span>
+        </div>
+        <div class="summary-row total">
+          <span>Tổng cộng</span>
+          <span id="sumTotal">0đ</span>
+        </div>
+      </div>
+
+      <button class="btn btn-block" onclick="checkout()">Đặt Hàng Ngay</button>
+      <a href="order.html" class="link-back">← Tiếp tục chọn món</a>
+    </aside>
+  </div>
+</section>
+
+<footer class="app-footer">
+  <div class="footer-brand">CAPP<span>AN</span></div>
+  <div class="footer-tagline">Coffee &amp; More - Home Study</div>
+  <div class="footer-links">
+    <a href="index.html">Trang chủ</a>
+    <a href="menu.html">Thực đơn</a>
+    <a href="booking.html">Đặt chỗ</a>
+    <a href="order.html">Đặt nước</a>
+    <a href="cart.html">Giỏ hàng</a>
+    <a href="tracking.html">Theo dõi đơn</a>
+    <a href="contact.html">Liên hệ</a>
+    <a href="privacy.html">Chính sách bảo mật</a>
+  </div>
+  <div class="footer-copy">© CAPPANNGUYEN · Công viên Gia Định, P. Hạnh Thông, Q.Gò Vấp, TP.HCM · Hotline: 0366 444 038</div>
+</footer>
+
+<button class="chat-btn" aria-label="Mở trợ lý AI" aria-controls="chatBox" aria-expanded="false" onclick="toggleChat()">🤖</button>
+<div class="chat-box" id="chatBox">
+  <div class="chat-header">
+  <span>🤖 Trợ lý CAPPAN</span>
+  <div class="chat-header-actions">
+    <button onclick="clearAICache()" title="Xóa cache AI" aria-label="Xóa cache AI">🧹</button>
+    <button onclick="clearChatHistory()" title="Xóa lịch sử" aria-label="Xóa lịch sử chat">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    </button>
+    <button onclick="toggleChat()" title="Đóng" aria-label="Đóng cửa sổ chat">✕</button>
+  </div>
+</div>
+  <div class="chat-body" id="chatBody" role="log" aria-live="polite" aria-label="Lịch sử trò chuyện với trợ lý">
+  </div>
+  <div class="chat-input">
+    <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+    <button onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<script src="js/data/schema.js"></script>
+<script src="js/data/weather.js"></script>
+<script src="js/data/shipper.js"></script> 
+<script src="js/ai/ai-input.js"></script>
+<script src="js/ai/ai-output.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>              
+<script src="js/data/promotions.js"></script>      
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script> 
+<script src="js/staff-guard.js"></script>
+<script src="js/ai/item-lookup.js"></script>
+<script src="js/ai/injection-guard.js"></script>
+<script src="js/ai/multi-intent-splitter.js"></script>
+<script src="js/ai/intent-authorization.js"></script>
+<script src="js/ai/emotional-handler.js"></script>
+<script src="js/ai/user-memory.js"></script>
+<script src="js/ai/brain-legacy.js"></script>
+<script src="js/ai/brain.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+
+<script src="js/ai/proactive.js"></script>
+<script src="js/ai/handover.js"></script>
+<script src="js/ai/chat-interactions.js"></script>
+
+
+<script>
+const SHIPPING_FEE = 15000;
+
+// ⚡ P2-2: Persist promo qua sessionStorage — không mất khi navigate qua lại
+let appliedPromo = sessionStorage.getItem('cappan_applied_promo') || null;
+
+function setAppliedPromo(code) {
+  appliedPromo = code || null;
+  if (code) sessionStorage.setItem('cappan_applied_promo', code);
+  else sessionStorage.removeItem('cappan_applied_promo');
+}
+
+/* Tính giảm giá hiện tại (kiểm tra lại mỗi lần vẽ: đổi số lượng có thể làm mã hết đủ điều kiện) */
+function currentDiscount(subtotal) {
+  if (!appliedPromo) return { discount: 0 };
+  const user = API.users.getCurrent();
+  const r = API.promotions.evaluate(appliedPromo, subtotal, SHIPPING_FEE, user && user.id);
+  if (!r.ok) {
+  const msg = document.getElementById('promoMsg');
+  if (msg) { msg.textContent = '⚠ ' + r.error + ' — đã bỏ mã ' + appliedPromo; msg.className = 'promo-msg err'; }
+  setAppliedPromo(null);
+  return { discount: 0 };
+}
+  return { discount: r.discount, code: appliedPromo };
+}
+
+function applyPromo() {
+  const input = document.getElementById('coPromo');
+  const msg = document.getElementById('promoMsg');
+  const code = input.value.trim().toUpperCase();
+
+  if (!code) {
+    setAppliedPromo(null);
+    msg.textContent = '';
+    msg.className = 'promo-msg';
+    renderCartPage();
+    return;
+  }
+
+  const cart = API.cart.get();
+  const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const user = API.users.getCurrent();
+  const r = API.promotions.evaluate(code, sub, SHIPPING_FEE, user && user.id);
+
+  if (!r.ok) {
+    setAppliedPromo(null);
+    msg.textContent = '⚠ ' + r.error;
+    msg.className = 'promo-msg err';
+  } else {
+    setAppliedPromo(code);
+    msg.textContent = '✓ Đã áp dụng ' + code + ': giảm ' + API.utils.formatVND(r.discount);
+    msg.className = 'promo-msg ok';
+  }
+
+  renderCartPage();
+}
+
+window.applyPromoQuick = function(code) {
+  const input = document.getElementById('coPromo');
+  if (input) {
+    input.value = code;
+    applyPromo(); // Gọi hàm áp dụng mã có sẵn của bạn
+  }
+};
+function renderCartPage() {
+  const cart = API.cart.get();
+  const empty = document.getElementById('cartEmpty');
+  const content = document.getElementById('cartContent');
+  if (!empty || !content) return;
+
+  const signature = JSON.stringify(cart.map(i => `${i.itemId}_${i.size}_${i.qty}`)) + '_' + (appliedPromo || 'none');
+  if (content.dataset.signature === signature) return;
+  content.dataset.signature = signature;
+
+  if (cart.length === 0) {
+    empty.hidden = false;
+    content.hidden = true;
+    return;
+  }
+  empty.hidden = true;
+  content.hidden = false;
+
+const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const totalQty = cart.reduce((s, i) => s + i.qty, 0);
+  document.getElementById('cartItemCount').textContent = totalQty;
+
+  // ⚡ NÂNG CẤP: FOMO PROMOTIONS (Sợ bỏ lỡ)
+  const freeshipBar = document.getElementById('freeshipBar');
+  const freeshipText = document.getElementById('freeshipText');
+  const freeshipFill = document.getElementById('freeshipFill');
+  const FREESHIP_THRESHOLD = 100000;
+
+  let bestPromo = null;
+  let maxDiscount = 0;
+
+  // Nếu chưa áp dụng mã nào, tìm mã tốt nhất khách có thể dùng
+  if (!appliedPromo) {
+    const user = API.users.getCurrent();
+    API.promotions.getActive().forEach(p => {
+      const r = API.promotions.evaluate(p.code, subtotal, SHIPPING_FEE, user && user.id);
+      if (r.ok && r.discount > maxDiscount) {
+        maxDiscount = r.discount;
+        bestPromo = p;
+      }
+    });
+  }
+
+   if (bestPromo) {
+    freeshipBar.style.background = '#fff3e0'; // ⚡ Nền cam nhạt
+    freeshipBar.style.borderColor = '#ffcc80'; // ⚡ Viền cam
+    freeshipBar.style.display = 'block';
+    freeshipText.innerHTML = `🎁 Đơn hàng có thể giảm thêm <strong>${API.utils.formatVND(maxDiscount)}</strong>! 
+      <button type="button" onclick="applyPromoQuick('${bestPromo.code}')" style="background:#e65100; color:#fff; border:none; padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:bold; cursor:pointer; margin-left:8px; box-shadow: 0 2px 5px rgba(230,81,0,0.4);">
+        Dùng mã ${bestPromo.code}
+      </button>`;
+    freeshipFill.style.width = '100%';
+    freeshipFill.style.background = 'linear-gradient(90deg, #ff9800, #e65100)';
+  } else if (appliedPromo) {
+    // Đã dùng mã -> Ẩn thanh gợi ý
+    freeshipBar.style.display = 'none';
+  } else if (subtotal > 0 && subtotal < FREESHIP_THRESHOLD) {
+    // ⚡ FIX: Trả lại màu nền xanh và viền xanh cho Freeship thông thường
+    freeshipBar.style.background = '#f0f8ff';
+    freeshipBar.style.borderColor = '#cce5ff';
+    freeshipBar.style.display = 'block';
+    
+    const missing = FREESHIP_THRESHOLD - subtotal;
+    freeshipText.innerHTML = `Mua thêm <strong>${API.utils.formatVND(missing)}</strong> để đủ điều kiện dùng mã <strong>FREESHIP</strong>!`;
+    freeshipFill.style.width = `${(subtotal / FREESHIP_THRESHOLD) * 100}%`;
+    freeshipFill.style.background = '#2196f3';
+  } else {
+    freeshipBar.style.display = 'none';
+  }
+
+
+  const list = document.getElementById('cartItemsList');
+  list.innerHTML = cart.map(i => `
+    <div class="cart-item">
+      <img src="${esc(i.img)}" alt="${esc(i.name)}">
+      <div class="cart-item-info">
+        <h4>${esc(i.name)}</h4>
+        <small>Size ${i.size || 'M'}</small>
+        <div class="cart-item-price">${API.utils.formatVND(i.price)}</div>
+      </div>
+      <div class="cart-item-qty">
+        <button class="qty-btn" onclick="changeQty('${i.itemId}','${i.size}',-1)">−</button>
+        <span>${i.qty}</span>
+        <button class="qty-btn" onclick="changeQty('${i.itemId}','${i.size}',1)">+</button>
+      </div>
+      <div class="cart-item-total">${API.utils.formatVND(i.price * i.qty)}</div>
+      <button class="cart-item-remove" onclick="removeItem('${i.itemId}','${i.size}')">✕</button>
+    </div>
+  `).join('');
+
+  document.getElementById('sumSubtotal').textContent = API.utils.formatVND(subtotal);
+  document.getElementById('sumShipping').textContent = API.utils.formatVND(SHIPPING_FEE);
+  const dc = currentDiscount(subtotal);
+  document.getElementById('sumDiscountRow').style.display = dc.discount > 0 ? '' : 'none';
+  document.getElementById('sumDiscount').textContent = '-' + API.utils.formatVND(dc.discount);
+  document.getElementById('sumPromoCode').textContent = dc.code ? '(' + dc.code + ')' : '';
+  document.getElementById('sumTotal').textContent = API.utils.formatVND(subtotal + SHIPPING_FEE - dc.discount);
+
+  const hint = document.getElementById('promoHint');
+  if (hint) {
+    const codes = API.promotions.getActive().map(p => p.code);
+    hint.textContent = codes.length
+      ? 'Mã hiện có: ' + codes.join(', ') + (appliedPromo ? ' · Đang chọn: ' + appliedPromo : '')
+      : '';
+  }
+
+  const user = API.users.getCurrent();
+  if (user) {
+    const nameEl = document.getElementById('coName');
+    const phoneEl = document.getElementById('coPhone');
+    const addrEl = document.getElementById('coAddress');
+    if (nameEl && !nameEl.value) nameEl.value = user.name || '';
+    if (phoneEl && !phoneEl.value) phoneEl.value = user.phone || '';
+    if (addrEl && !addrEl.value) addrEl.value = user.address || '';
+  }
+}
+
+function changeQty(itemId, size, delta) {
+  const cart = API.cart.get();
+  const it = cart.find(i => i.itemId === itemId && i.size === size);
+  if (!it) return;
+  it.qty += delta;
+  if (it.qty <= 0) {
+    API.cart.set(cart.filter(i => !(i.itemId === itemId && i.size === size)));
+  } else {
+    API.cart.set(cart);
+  }
+  renderCartPage();
+  updateUserArea();
+}
+
+function removeItem(itemId, size) {
+  if (!confirm('Xoá món này khỏi giỏ?')) return;
+  API.cart.remove(itemId, size);
+  renderCartPage();
+  updateUserArea();
+  showToast('Đã xoá món khỏi giỏ');
+}
+
+function clearCart() {
+  if (!confirm('Xoá TẤT CẢ món trong giỏ?')) return;
+  API.cart.clear();
+  setAppliedPromo(null);
+  renderCartPage();
+  updateUserArea();
+  showToast('Đã xoá toàn bộ giỏ hàng');
+}
+
+function checkout() {
+  if (!Auth.isLoggedIn()) {
+    showToast('🔒 Vui lòng đăng nhập để đặt hàng!', '#c62828');
+    setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+    return;
+  }
+
+  const cart = API.cart.get();
+  if (cart.length === 0) {
+    showToast('⚠ Giỏ hàng trống!', '#c62828');
+    return;
+  }
+
+  const name = document.getElementById('coName').value.trim();
+  const phone = document.getElementById('coPhone').value.trim().replace(/\s/g, '');
+  const address = document.getElementById('coAddress').value.trim();
+  const note = document.getElementById('coNote').value.trim();
+
+  if (!name || !phone || !address) {
+    showToast('⚠ Vui lòng điền đầy đủ thông tin!', '#c62828');
+    return;
+  }
+
+  // ⚡ Validate SĐT Việt Nam
+  if (!/^0\d{9,10}$/.test(phone)) {
+    showToast('⚠ Số điện thoại không hợp lệ (VD: 0909123456)!', '#c62828');
+    return;
+  }
+
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const dc = currentDiscount(subtotal);
+  const finalTotal = subtotal + SHIPPING_FEE - dc.discount;
+  const totalQty = cart.reduce((s, i) => s + i.qty, 0);
+  
+  if (!confirm(`Xác nhận đặt ${totalQty} món?\nTổng: ${API.utils.formatVND(finalTotal)}`)) return;
+
+  const user = API.users.getCurrent();
+  
+  let order = null;
+  try {
+    order = API.orders.create({
+      userId: user.id,
+      items: cart,
+      total: finalTotal,
+      subtotal: subtotal,
+      shipping: SHIPPING_FEE,
+      discount: dc.discount,
+      promoCode: dc.code || '',
+      address: address,
+      phone: phone,
+      note: note,
+      customerName: name
+    });
+  } catch (err) {
+    console.error('[checkout] create error:', err);
+    showToast('⚠ Không thể tạo đơn hàng (bộ nhớ đầy). Vui lòng thử lại!', '#c62828');
+    return;
+  }
+
+  if (!order || !order.id) {
+    showToast('⚠ ' + (API._lastError || 'Không thể tạo đơn hàng. Vui lòng thử lại!'), '#c62828');
+    return;
+  }
+
+  // Cập nhật profile
+  API.users.update(user.id, { address: address, name: name });
+  
+  API.cart.clear();
+  setAppliedPromo(null);
+  updateUserArea();
+
+  // ⚡ Hiệu ứng Confetti & Toast
+  if (typeof window.fxConfetti === 'function') window.fxConfetti();
+  showToast(`✓ Đặt hàng thành công! Mã: ${order.id}`);
+  
+  // ⚡ FIX TRIỆT ĐỂ: Lưu tin nhắn vào AIBrain History để không bị mất khi chuyển trang
+  try {
+    const receiptMsg = `Dạ, em xác nhận quý khách đã đặt thành công đơn hàng **${order.id}** với tổng tiền **${API.utils.formatVND(finalTotal)}**. Cảm ơn quý khách đã sử dụng dịch vụ tại CAPPAN Coffee & More! ạ.`;
+    
+    // 1. Hiển thị ngay trên màn hình hiện tại
+    if (typeof addChatMsg === 'function') {
+      addChatMsg(receiptMsg, 'bot');
+    }
+    
+    // 2. Lưu vào AIBrain history — dùng _pushHistory (đã tự push + save)
+    if (typeof AIBrain !== 'undefined' && typeof AIBrain._getSessionId === 'function') {
+      const sid = AIBrain._getSessionId();
+      if (typeof AIBrain._pushHistory === 'function') {
+        AIBrain._pushHistory(sid, 'assistant', receiptMsg);
+      } else {
+        // Fallback cho bản cũ (nếu chat-interactions.js lỗi → _getRole không có)
+        const role = typeof AIBrain._getRole === 'function'
+          ? AIBrain._getRole()
+          : (sid.startsWith('staff_') ? 'staff' : (sid.startsWith('customer_') ? 'customer' : 'guest'));
+        if (typeof AIBrain._getHistory === 'function') AIBrain._getHistory(sid, role);
+        if (AIBrain.histories && Array.isArray(AIBrain.histories[sid])) {
+          AIBrain.histories[sid].push({ role: 'assistant', content: receiptMsg });
+          if (typeof AIBrain._saveHistories === 'function') AIBrain._saveHistories();
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[checkout] Không lưu được tin nhắn chat:', e);
+  }
+
+  // Chờ 2.5s cho khách đọc toast rồi mới chuyển trang
+  setTimeout(() => { window.location.href = 'tracking.html'; }, 2500);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (Auth.isStaff()) return;
+  renderCartPage();
+
+  // ⚡ TỰ ĐỘNG ĐIỀN ĐỊA CHỈ TỪ CHAT CHUYỂN SANG
+  const chatAddress = sessionStorage.getItem('cappan_chat_checkout_address');
+  if (chatAddress) {
+    const addrInput = document.getElementById('coAddress');
+    if (addrInput) {
+      addrInput.value = chatAddress;
+      // Xóa bộ nhớ tạm để lần sau vào không bị điền lại địa chỉ cũ
+      sessionStorage.removeItem('cappan_chat_checkout_address');
+    }
+  }
+    // ⚡ TỰ ĐỘNG ĐIỀN THÔNG TIN TỪ CHAT CHUYỂN SANG
+  const checkoutInfo = sessionStorage.getItem('cappan_checkout_info');
+  if (checkoutInfo) {
+    try {
+      const info = JSON.parse(checkoutInfo);
+      if (info.name) document.getElementById('coName').value = info.name;
+      if (info.phone) document.getElementById('coPhone').value = info.phone;
+      if (info.address) document.getElementById('coAddress').value = info.address;
+      
+      // Xóa bộ nhớ tạm để lần sau vào không bị điền lại
+      sessionStorage.removeItem('cappan_checkout_info');
+      
+      // Tự động cuộn xuống form để khách thấy đã điền xong
+      document.querySelector('.cart-checkout').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch(e) {}
+  }
+
+});
+</script>
+<script src="js/demo.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/dark-mode.js"></script>
+</body>
+</html>

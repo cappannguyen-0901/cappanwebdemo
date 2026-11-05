@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Đăng ký – CAPPAN</title>
+<!-- CAPPAN head chuẩn hoá -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:title" content="CAPPAN – Coffee & More">
+<meta property="og:description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="dark-mode.css">
+<!-- Nhúng file CSS mới ở cuối cùng để đè lên tất cả -->
+<link rel="stylesheet" href="card-premium.css"> 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="ui-polish.css">
+<script>
+(function(){try{if(!/\/staff-/.test(location.pathname))document.documentElement.classList.add('chat-guest');if(localStorage.getItem('cappan_chat_is_open')==='1')document.documentElement.setAttribute('data-chat-open','1');}catch(e){}})();
+</script>
+</head>
+<body data-page="register">
+
+<header class="app-header">
+  <a class="logo" href="index.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Coffee &amp; More - Home Study</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav">
+    <ul class="nav-list">
+      <li><a href="index.html">Trang chủ</a></li>
+      <li><a href="menu.html">Thực đơn</a></li>
+      <li><a href="booking.html">Đặt chỗ</a></li>
+      <li><a href="order.html">Đặt nước</a></li>
+      <li><a href="tracking.html">Theo dõi đơn</a></li>
+      <li><a href="contact.html">Liên hệ</a></li>
+    </ul>
+    <div class="user-area" id="userArea"></div>
+    <button class="theme-toggle" aria-label="Chuyển chế độ sáng/tối" id="themeToggle" onclick="toggleDarkMode()" title="Chuyển chế độ Sáng/Tối">🌙</button>
+  </nav>
+</header>
+
+<section class="auth-section">
+  <div class="auth-card">
+    <h2>Đăng ký</h2>
+    <p class="auth-sub">Tạo tài khoản CAPPAN</p>
+
+    <form id="registerForm" onsubmit="return handleRegister(event)">
+      <div class="form-group">
+        <label>Bạn là</label>
+        <div class="role-switch">
+          <label class="role-option active" id="roleCustomer">
+            <input type="radio" name="role" value="customer" checked onchange="switchRole('customer')">
+            👤 Khách hàng
+          </label>
+          <label class="role-option" id="roleStaff">
+            <input type="radio" name="role" value="staff" onchange="switchRole('staff')">
+            👨‍💼 Nhân viên
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Họ và tên</label>
+        <input type="text" id="regName" placeholder="Nguyễn Văn A" required>
+      </div>
+
+      <div class="form-group">
+        <label>Số điện thoại</label>
+        <input type="tel" id="regPhone" placeholder="0909123456" required>
+      </div>
+
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="regPassword" placeholder="Ít nhất 3 ký tự" required>
+      </div>
+
+      <div class="form-group" id="inviteGroup" style="display:none;">
+        <label>Mã mời nhân viên</label>
+        <input type="text" id="regInvite" placeholder="CAPPANNGUYEN-STAFF">
+        <small class="form-hint">Mã demo (chỉ dùng trong bản demo): CAPPANNGUYEN-STAFF</small>
+      </div>
+
+      <div class="form-group">
+        <label class="consent-row">
+          <input type="checkbox" id="regConsent" required>
+          <span>Tôi đồng ý để CAPPAN lưu họ tên, số điện thoại để đặt chỗ/đặt nước, theo <a href="privacy.html" target="_blank" rel="noopener">Chính sách bảo mật</a>.</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-block">Đăng ký</button>
+    </form>
+
+    <p class="auth-link">
+      Đã có tài khoản? <a href="login.html">Đăng nhập</a>
+    </p>
+  </div>
+</section>
+
+<footer class="app-footer">
+  <div class="footer-brand">CAPP<span>AN</span></div>
+  <div class="footer-tagline">Coffee &amp; More - Home Study</div>
+  <div class="footer-links">
+    <a href="privacy.html">Chính sách bảo mật</a>
+  </div>
+  <div class="footer-copy">© CAPPANNGUYEN · Hotline: 0366 444 038</div>
+</footer>
+
+<button class="chat-btn" aria-label="Mở trợ lý AI" aria-controls="chatBox" aria-expanded="false" onclick="toggleChat()">🤖</button>
+<div class="chat-box" id="chatBox">
+  <div class="chat-header">
+  <span>🤖 Trợ lý CAPPAN</span>
+  <div class="chat-header-actions">
+    <button onclick="clearAICache()" title="Xóa cache AI" aria-label="Xóa cache AI">🧹</button>
+    <button onclick="clearChatHistory()" title="Xóa lịch sử" aria-label="Xóa lịch sử chat">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    </button>
+    <button onclick="toggleChat()" title="Đóng" aria-label="Đóng cửa sổ chat">✕</button>
+  </div>
+</div>
+  <div class="chat-body" id="chatBody" role="log" aria-live="polite" aria-label="Lịch sử trò chuyện với trợ lý">
+  </div>
+  <div class="chat-input">
+    <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." autocomplete="off" onkeypress="if(event.key==='Enter') sendChat()">
+    <button onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<script src="js/data/schema.js"></script>
+<script src="js/ai/ai-input.js"></script>
+<script src="js/ai/ai-output.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>              
+<script src="js/data/promotions.js"></script>      
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/ai/item-lookup.js"></script>
+<script src="js/ai/injection-guard.js"></script>
+<script src="js/ai/multi-intent-splitter.js"></script>
+<script src="js/ai/intent-authorization.js"></script>
+<script src="js/ai/emotional-handler.js"></script>
+<script src="js/ai/user-memory.js"></script>
+<script src="js/ai/brain-legacy.js"></script>
+<script src="js/ai/brain.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+
+<script src="js/ai/proactive.js"></script>
+<script src="js/ai/handover.js"></script>
+<script src="js/ai/chat-interactions.js"></script>
+
+<script>
+function switchRole(role) {
+  document.getElementById('roleCustomer').classList.toggle('active', role === 'customer');
+  document.getElementById('roleStaff').classList.toggle('active', role === 'staff');
+  document.getElementById('inviteGroup').style.display = role === 'staff' ? 'flex' : 'none';
+}
+
+function handleRegister(e) {
+  e.preventDefault();
+
+  const roleEl = document.querySelector('input[name="role"]:checked');
+  if (!roleEl) {
+    showToast('⚠ Vui lòng chọn loại tài khoản!', '#c62828');
+    return false;
+  }
+
+  const role = roleEl.value;
+  const data = {
+    name: document.getElementById('regName').value.trim(),
+    phone: document.getElementById('regPhone').value.trim(),
+    password: document.getElementById('regPassword').value,
+    role: role,
+    inviteCode: document.getElementById('regInvite').value.trim()
+  };
+
+  if (!data.name || !data.phone || !data.password) {
+    showToast('⚠ Vui lòng điền đầy đủ thông tin!', '#c62828');
+    return false;
+  }
+
+  if (data.password.length < 3) {
+    showToast('⚠ Mật khẩu phải có ít nhất 3 ký tự!', '#c62828');
+    return false;
+  }
+
+  if (!document.getElementById('regConsent').checked) {
+    showToast('⚠ Vui lòng đồng ý Chính sách bảo mật để tiếp tục', '#c62828');
+    return false;
+  }
+
+  const result = Auth.register(data);
+
+  if (!result.ok) {
+    showToast('⚠ ' + result.error, '#c62828');
+    return false;
+  }
+
+  showToast('✓ Đăng ký thành công! Chào ' + result.user.name);
+
+  // ⚡ FIX: redirect theo role
+  setTimeout(function() {
+    const url = result.user.role === 'staff'
+      ? 'staff-dashboard.html'
+      : 'index.html';
+    window.location.href = url;
+  }, 1000);
+
+  return false;
+}
+</script>
+<script src="js/demo.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/dark-mode.js"></script>
+</body>
+</html>

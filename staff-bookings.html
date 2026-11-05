@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Booking — CAPPAN Staff</title>
+<!-- CAPPAN head chuẩn hoá -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:title" content="CAPPAN – Coffee & More">
+<meta property="og:description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="chat-panel.css">
+<link rel="stylesheet" href="staff.css">
+<link rel="stylesheet" href="dark-mode.css">
+<!-- Nhúng file CSS mới ở cuối cùng để đè lên tất cả -->
+<link rel="stylesheet" href="card-premium.css"> 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<script>
+/* Đặt sẵn độ rộng + trạng thái chat TRƯỚC khi trình duyệt vẽ lần đầu → không bị dựt khi đổi trang */
+(function(){try{var d=document.documentElement,
+w=parseInt(localStorage.getItem('cappan_chat_panel_width'),10);
+if(w)d.style.setProperty('--chat-w',Math.max(280,Math.min(600,w))+'px');
+d.dataset.chat=localStorage.getItem('cappan_chat_panel_collapsed')==='1'?'collapsed':'open';
+d.classList.add('no-anim');}catch(e){}})();
+</script>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<script>
+(function(){try{if(localStorage.getItem('cappan_chat_is_open')==='1')document.documentElement.setAttribute('data-chat-open','1');}catch(e){}})();
+</script>
+</head>
+<body data-page="staff-bookings">
+
+<header class="app-header">
+  <a class="logo" href="staff-dashboard.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Staff Panel</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav"></nav>
+</header>
+
+<div class="dashboard-layout" id="dashboardLayout">
+  <div class="dashboard-main">
+    <section class="section">
+
+      <h2 class="section-title" style="text-align:left;">🪑 Quản lý booking</h2>
+
+      <div class="staff-tabs" id="bkTabs">
+        <button class="staff-tab active" data-tab="active" onclick="setFilter('active')">Đang hoạt động</button>
+        <button class="staff-tab" data-tab="confirmed" onclick="setFilter('confirmed')">Sắp tới</button>
+        <button class="staff-tab" data-tab="held" onclick="setFilter('held')">Đang giữ</button>
+        <button class="staff-tab" data-tab="seated" onclick="setFilter('seated')">Đang ngồi</button>
+        <button class="staff-tab" data-tab="completed" onclick="setFilter('completed')">Hoàn tất</button>
+        <button class="staff-tab" data-tab="no_show" onclick="setFilter('no_show')">Không đến</button>
+        <button class="staff-tab" data-tab="cancelled" onclick="setFilter('cancelled')">Đã hủy</button>
+        <button class="staff-tab" data-tab="all" onclick="setFilter('all')">Tất cả</button>
+      </div>
+
+      <div class="staff-panel">
+        <div class="panel-header">
+          <h3>Danh sách booking</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn" style="font-size:0.8rem; padding:4px 12px;" onclick="openStaffBooking()">＋ Đặt bàn</button>
+            <button class="btn-outline" style="font-size:0.8rem; padding:4px 12px;" onclick="openWalkIn()">＋ Khách vãng lai</button>
+            <button class="btn-mini-reset" onclick="completeAll()">✅ Hoàn thành tất cả</button>
+          </div>
+        </div>
+        <div id="bookingsContainer"></div>
+      </div>
+
+    </section>
+  </div>
+
+  <div class="panel-resizer" id="panelResizer"></div>
+  <aside class="chat-panel" id="chatPanel">
+    <div class="chat-panel-header">
+      <span class="chat-panel-title">🤖 Trợ lý CAPPAN</span>
+      <div class="chat-panel-actions">
+        <button class="chat-panel-btn" id="btnCollapseChat" title="Thu gọn bảng chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+        <button class="chat-panel-btn emoji-btn" onclick="clearAICache()" title="Xóa cache AI">🧹</button>
+        <button class="chat-panel-btn" id="btnClearChat" title="Xóa lịch sử">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-panel-footer">
+      <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+      <button id="btnSendChat" title="Gửi">▶</button>
+    </div>
+  </aside>
+  <button class="chat-float-btn" id="chatFloatBtn" title="Mở trợ lý"><span>🤖</span></button>
+</div>
+
+<!-- MODAL: KHÁCH VÃNG LAI -->
+<div class="modal-overlay" id="walkInModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('walkInModal')">✕</button>
+    <h2>Khách vãng lai</h2>
+    <p class="modal-sub">Xếp bàn ngay — không cần tài khoản, không cần đặt trước.</p>
+    <form id="walkInForm" onsubmit="return submitWalkIn(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tên khách</label>
+          <input type="text" id="wiName" placeholder="Khách vãng lai" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label>Số điện thoại</label>
+          <input type="tel" id="wiPhone" placeholder="0909123456" maxlength="12">
+        </div>
+        <div class="form-group">
+          <label>Bàn trống</label>
+          <select id="wiSeat" required></select>
+        </div>
+        <div class="form-group">
+          <label>Số khách</label>
+          <input type="number" id="wiGuests" min="1" max="20" value="2" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ghi chú</label>
+        <input type="text" id="wiNote" placeholder="Ví dụ: cần ổ cắm..." maxlength="120">
+      </div>
+      <button type="submit" class="btn btn-block">Xếp bàn</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: NHÂN VIÊN ĐẶT BÀN HỘ KHÁCH -->
+<div class="modal-overlay" id="staffBookingModal">
+  <div class="modal-box wide">
+    <button class="modal-close" onclick="closeModal('staffBookingModal')">✕</button>
+    <h2>Đặt bàn cho khách</h2>
+    <p class="modal-sub">Tìm khách theo SĐT (không bắt buộc) — bỏ trống sẽ lưu thành khách vãng lai.</p>
+    <form id="staffBookingForm" onsubmit="return submitStaffBooking(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Số điện thoại khách</label>
+          <input type="tel" id="sbPhone" placeholder="0909123456" maxlength="12" oninput="lookupBookingCustomer()">
+        </div>
+        <div class="form-group">
+          <label>Họ tên khách</label>
+          <input type="text" id="sbName" placeholder="Nguyễn Văn A" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label>Tầng</label>
+          <select id="sbFloor" onchange="renderStaffBookingSeats()"></select>
+        </div>
+        <div class="form-group">
+          <label>Bàn trống</label>
+          <select id="sbSeat" required onchange="updateDepositPreview()"></select>
+        </div>
+        <div class="form-group">
+          <label>Ngày</label>
+          <input type="date" id="sbDate" required oninput="renderStaffBookingSeats()">
+        </div>
+        <div class="form-group">
+          <label>Giờ</label>
+          <input type="time" id="sbTime" value="19:00" required>
+        </div>
+        <div class="form-group">
+          <label>Số khách</label>
+          <input type="number" id="sbGuests" min="1" max="8" value="2" required oninput="renderStaffBookingSeats()">
+        </div>
+        <div class="form-group">
+          <label>Cọc dự kiến</label>
+          <input type="text" id="sbDeposit" readonly value="—">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ghi chú</label>
+        <input type="text" id="sbNote" placeholder="Ví dụ: cần ổ cắm, sinh nhật..." maxlength="120">
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="sbDepositPaid"> Đã thu cọc
+      </label>
+      <button type="submit" class="btn btn-block">Đặt bàn</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<!-- ══════════════ 1. DATA LAYER (không phụ thuộc gì) ══════════════ -->
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+
+<!-- ══════════════ 2. AI INPUT/OUTPUT (chỉ cần schema) ══════════════ -->
+<script src="js/ai/ai-input.js"></script>
+<script src="js/ai/ai-output.js"></script>
+
+<!-- ══════════════ 3. API + REALTIME (cần data) ══════════════ -->
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+
+<!-- ══════════════ 4. GUARD (cần API) ══════════════ -->
+<script src="js/staff-guard.js"></script>
+
+<!-- ══════════════ 5. AI SUB-MODULES (thứ tự quan trọng) ══════════════ -->
+<script src="js/ai/item-lookup.js"></script>
+<script src="js/ai/injection-guard.js"></script>
+<script src="js/ai/multi-intent-splitter.js"></script>
+<script src="js/ai/intent-authorization.js"></script>
+<script src="js/ai/emotional-handler.js"></script>
+<script src="js/ai/user-memory.js"></script>
+<script src="js/ai/brain-legacy.js"></script>
+<script src="js/ai/brain.js"></script>
+
+<!-- ══════════════ 6. CORE (cần API + AI) ══════════════ -->
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+
+<!-- ══════════════ 7. CHAT PANEL (cần AIBrain + main) ══════════════ -->
+<script src="js/chat-panel.js"></script>
+<script src="js/staff-nav.js"></script>
+
+<!-- ══════════════ 8. ⚡ MỚI: CHAT INTERACTIONS ══════════════ -->
+<!-- Phải SAU brain.js + main.js + chat-panel.js (vì override AIBrain) -->
+<script src="js/ai/chat-interactions.js"></script>
+
+<!-- ══════════════ 9. HANDOVER (staff cũng escalate được) ══════════════ -->
+<script src="js/ai/handover.js"></script>
+
+<!-- ══════════════ 10. HIỆU ỨNG + DARK MODE + DEMO (CUỐI CÙNG) ══════════════ -->
+<script src="js/demo.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/dark-mode.js"></script>
+
+<!-- ══════════════ 11. INLINE SCRIPT CỦA TỪNG TRANG ══════════════ -->
+<!-- (staff-dashboard, staff-orders... tự chèn inline ở đây) -->
+
+<script>
+let bkFilter = 'active';
+
+const BK_STATUS = {
+  confirmed: '🟢 Đang hoạt động',
+  held: '🟡 Đang giữ',
+  seated: '🪑 Đang ngồi',
+  completed: '✅ Hoàn tất',
+  cancelled: '❌ Đã hủy',
+  no_show: '⚠️ Không đến'
+};
+const BK_TAB_LABELS = {
+  active: 'Đang hoạt động', confirmed: 'Sắp tới', held: 'Đang giữ', seated: 'Đang ngồi',
+  completed: 'Hoàn tất', no_show: 'Không đến', cancelled: 'Đã hủy', all: 'Tất cả'
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!Auth.requireStaff()) return;
+  renderStaffNav('bookings');
+  renderBookings();
+  window.addEventListener('cappan:sync', renderBookings);
+  window.addEventListener('storage', renderBookings);
+  window.addEventListener('cappan:automation', renderBookings);
+  window.addEventListener('focus', renderBookings);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') renderBookings(); });
+  setInterval(renderBookings, 4000);
+});
+
+function setFilter(f) {
+  bkFilter = f;
+  document.querySelectorAll('#bkTabs .staff-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === f)
+  );
+  renderBookings();
+}
+
+function getFilteredBookings() {
+  let list = API.bookings.getAll();
+  if (bkFilter === 'active') {
+    list = list.filter(b => b.status === 'confirmed' || b.status === 'held' || b.status === 'seated');
+  } else if (bkFilter !== 'all') {
+    list = list.filter(b => b.status === bkFilter);
+  }
+  return list.slice().reverse();
+}
+
+function money(n) { return API.utils.formatVND(Number(n) || 0); }
+function fmtBookingDate(s) {
+  if (!s) return '—';
+  const p = String(s).split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s;
+}
+
+function bookingName(b) {
+  const u = b.userId ? API.users.getById(b.userId) : null;
+  return (u && u.name) || b.customerName || 'Khách';
+}
+function bookingPhone(b) {
+  const u = b.userId ? API.users.getById(b.userId) : null;
+  return (u && u.phone) || b.phone || '—';
+}
+
+function renderTabCounts() {
+  const all = API.bookings.getAll();
+  const count = f => f === 'all' ? all.length
+    : f === 'active' ? all.filter(b => b.status === 'confirmed' || b.status === 'held' || b.status === 'seated').length
+    : all.filter(b => b.status === f).length;
+  document.querySelectorAll('#bkTabs .staff-tab').forEach(t => {
+    const f = t.dataset.tab;
+    const base = BK_TAB_LABELS[f] || t.textContent.replace(/\s*\(\d+\)$/, '');
+    const n = count(f);
+    t.textContent = n ? base + ' (' + n + ')' : base;
+  });
+}
+
+function renderBookings() {
+  renderTabCounts();
+  const el = document.getElementById('bookingsContainer');
+  if (!el) return;
+  const list = getFilteredBookings();
+
+  if (list.length === 0) {
+    el.innerHTML = '<p class="empty-note">Không có booking nào.</p>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="table-scroll">
+    <table class="staff-table booking-table">
+      <thead>
+        <tr>
+          <th>Mã</th><th>Khách</th><th>Chỗ</th>
+          <th>Ngày · Giờ</th><th>Số khách</th><th>Cọc</th>
+          <th>Trạng thái</th><th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(b => {
+          const user = b.userId ? API.users.getById(b.userId) : null;
+          const floor = API.floors.getById(b.floorId);
+          const noShow = Number(user && user.noShowCount) || 0;
+          const name = bookingName(b);
+          const phone = bookingPhone(b);
+          const active = b.status === 'confirmed' || b.status === 'held' || b.status === 'seated';
+          const deposit = Number(b.deposit) || 0;
+          const depCell = deposit > 0
+            ? `<div class="deposit-cell ${b.depositPaid ? 'paid' : 'unpaid'}">
+                 <strong>${money(deposit)}</strong>
+                 <button type="button" class="btn-deposit ${b.depositPaid ? 'paid' : 'unpaid'}"
+                         onclick="toggleDeposit('${b.id}')"
+                         title="${b.depositPaid ? 'Bỏ đánh dấu đã thu cọc' : 'Đánh dấu đã thu cọc'}">
+                   ${b.depositPaid ? '✓ Đã thu' : 'Thu cọc'}
+                 </button>
+               </div>`
+            : '<span class="text-muted">—</span>';
+          return `
+            <tr>
+              <td><strong>${b.id}</strong></td>
+              <td>
+                ${esc(name)}
+                ${b.walkIn ? '<span class="ui-chip" title="Khách vãng lai">Vãng lai</span>' : ''}
+                ${b.status === 'held' ? '<span class="ui-chip ui-chip-held" title="Bàn đang được giữ">Giữ bàn</span>' : ''}
+                ${b.createdBy === 'staff' ? '<span class="ui-chip ui-chip-muted" title="Nhân viên đặt hộ">Staff</span>' : ''}
+                ${noShow > 0 ? `<span class="ui-chip ui-chip-warn" title="Số lần khách không đến">No-show: ${noShow}</span>` : ''}
+                <div class="cell-sub">📞 ${esc(phone)}</div>
+              </td>
+              <td><strong>${esc(b.seatId)}</strong><div class="cell-sub">${floor ? esc(floor.name) : ''}</div></td>
+              <td>${esc(fmtBookingDate(b.date))}<div class="cell-sub">${esc(b.time || '')}</div></td>
+              <td>${b.guests || 1}</td>
+              <td>${depCell}</td>
+              <td>${b.paymentPending && b.status === 'held'
+                ? '<span class="status-tag held">⏳ Chờ thanh toán</span>'
+                : `<span class="status-tag ${b.status}">${BK_STATUS[b.status] || b.status}</span>`}</td>
+              <td class="actions-cell">
+                ${b.status === 'confirmed' ? `
+                  <button class="btn-mini" onclick="checkIn('${b.id}')" title="Khách đã đến">🪑</button>
+                  <button class="btn-mini btn-hold" onclick="holdBooking('${b.id}')" title="Đánh dấu đang giữ bàn">⏸</button>
+                ` : ''}
+                ${b.status === 'held' ? `
+                  <button class="btn-mini" onclick="checkIn('${b.id}')" title="Khách đã đến">🪑</button>
+                  <button class="btn-mini btn-hold" onclick="unholdBooking('${b.id}')" title="Bỏ giữ bàn">▶</button>
+                ` : ''}
+                ${active ? `<button class="btn-mini" onclick="complete('${b.id}')" title="Hoàn thành">✓</button>` : ''}
+                ${b.status === 'confirmed' ? `<button class="btn-mini-delete" onclick="noShow('${b.id}')" title="Khách không đến">⏱</button>` : ''}
+                ${active ? `<button class="btn-mini-delete" onclick="cancel('${b.id}')" title="Hủy">✗</button>` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+function checkIn(id) {
+  const r = API.bookings.checkIn(id);
+  if (!r) { showToast('⚠ Không check-in được — booking có thể đã xử lý', '#c62828'); return; }
+  renderBookings();
+  showToast('🪑 Đã ghi nhận khách đến');
+}
+
+function holdBooking(id) {
+  const r = API.bookings.setHeld(id, true);
+  if (!r) { showToast('⚠ Không giữ bàn được', '#c62828'); return; }
+  renderBookings();
+  showToast('⏸ Đã đánh dấu bàn đang được giữ');
+}
+
+function unholdBooking(id) {
+  const r = API.bookings.setHeld(id, false);
+  if (!r) { showToast('⚠ Không bỏ giữ được', '#c62828'); return; }
+  renderBookings();
+  showToast('▶ Đã bỏ giữ bàn');
+}
+
+function toggleDeposit(id) {
+  const b = API.bookings.getById ? API.bookings.getById(id) : API.bookings.getAll().find(x => x.id === id);
+  if (!b) return;
+  const r = API.bookings.setDepositPaid(id, !b.depositPaid);
+  if (!r) { showToast('⚠ Không cập nhật được cọc', '#c62828'); return; }
+  renderBookings();
+  showToast(r.depositPaid ? '✓ Đã thu cọc ' + money(r.deposit) : '↩ Đã bỏ đánh dấu thu cọc');
+}
+
+/* ---------- NHÂN VIÊN ĐẶT BÀN ---------- */
+function defaultBookingDate() {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+function openStaffBooking() {
+  const modal = document.getElementById('staffBookingModal');
+  if (!modal) return;
+  const floors = API.floors.getAll();
+  const floorSel = document.getElementById('sbFloor');
+  floorSel.innerHTML = floors.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
+  const dateEl = document.getElementById('sbDate');
+  if (!dateEl.value) dateEl.value = defaultBookingDate();
+  document.getElementById('sbPhone').value = '';
+  document.getElementById('sbName').value = '';
+  document.getElementById('sbGuests').value = 2;
+  document.getElementById('sbNote').value = '';
+  document.getElementById('sbDepositPaid').checked = false;
+  document.getElementById('sbTime').value = '19:00';
+  renderStaffBookingSeats();
+  openModal('staffBookingModal');
+}
+
+function renderStaffBookingSeats() {
+  const floorSel = document.getElementById('sbFloor');
+  const guests = parseInt(document.getElementById('sbGuests').value, 10) || 1;
+  const sel = document.getElementById('sbSeat');
+  const seats = API.seats.getAvailable().filter(s => (Number(s.capacity) || 0) >= guests);
+  let byFloor = seats.filter(s => s.floorId === floorSel.value);
+  if (!byFloor.length && seats.length) {
+    /* Tầng đang chọn hết bàn phù hợp → nhảy sang tầng đầu tiên còn bàn. */
+    const first = API.floors.getAll().find(f => seats.some(s => s.floorId === f.id));
+    if (first) {
+      floorSel.value = first.id;
+      byFloor = seats.filter(s => s.floorId === first.id);
+    }
+  }
+  const list = byFloor.length ? byFloor : [];
+  sel.innerHTML = list.length
+    ? list.map(s => `<option value="${s.id}">${s.id} — ${s.capacity} chỗ</option>`).join('')
+    : '<option value="">— Hết bàn phù hợp —</option>';
+  updateDepositPreview();
+}
+
+function updateDepositPreview() {
+  const seatId = document.getElementById('sbSeat').value;
+  const seat = seatId ? API.seats.getById(seatId) : null;
+  const dep = seat && typeof BookingRules !== 'undefined' ? BookingRules.depositFor(seat) : 0;
+  document.getElementById('sbDeposit').value = dep ? money(dep) : '—';
+}
+
+function lookupBookingCustomer() {
+  const phone = String(document.getElementById('sbPhone').value || '').trim();
+  if (!phone) return;
+  const u = API.users.getByPhone(phone);
+  if (u) {
+    const nameEl = document.getElementById('sbName');
+    if (nameEl && !nameEl.value) nameEl.value = u.name || '';
+  }
+}
+
+function submitStaffBooking(e) {
+  e.preventDefault();
+  const seatId = document.getElementById('sbSeat').value;
+  if (!seatId) { showToast('⚠ Không còn bàn phù hợp', '#c62828'); return false; }
+  const bk = API.bookings.createByStaff({
+    seatId,
+    date: document.getElementById('sbDate').value,
+    time: document.getElementById('sbTime').value,
+    guests: parseInt(document.getElementById('sbGuests').value, 10) || 1,
+    customerName: document.getElementById('sbName').value,
+    phone: document.getElementById('sbPhone').value,
+    note: document.getElementById('sbNote').value,
+    depositPaid: document.getElementById('sbDepositPaid').checked
+  });
+  if (!bk) { showToast('⚠ ' + (API._lastError || 'Không đặt được bàn'), '#c62828'); return false; }
+  closeModal('staffBookingModal');
+  setFilter('active');
+  showToast(`✓ Đã đặt bàn ${bk.seatId} cho ${bookingName(bk)} (${bk.guests} khách)`);
+  return false;
+}
+
+/* ---------- KHÁCH VÃNG LAI ---------- */
+function openWalkIn() {
+  const sel = document.getElementById('wiSeat');
+  const seats = API.seats.getAvailable();
+  if (!seats.length) { showToast('⚠ Hết bàn trống — không xếp được khách vãng lai', '#c62828'); return; }
+  sel.innerHTML = API.floors.getAll().map(f => {
+    const list = seats.filter(s => s.floorId === f.id);
+    if (!list.length) return '';
+    return `<optgroup label="${esc(f.name)}">${list.map(s =>
+      `<option value="${s.id}">${s.id} — ${s.capacity} chỗ</option>`).join('')}</optgroup>`;
+  }).join('');
+  document.getElementById('wiGuests').value = 2;
+  openModal('walkInModal');
+}
+
+function submitWalkIn(e) {
+  e.preventDefault();
+  const bk = API.bookings.createWalkIn({
+    seatId: document.getElementById('wiSeat').value,
+    guests: parseInt(document.getElementById('wiGuests').value, 10) || 1,
+    customerName: document.getElementById('wiName').value,
+    phone: document.getElementById('wiPhone').value,
+    note: document.getElementById('wiNote').value
+  });
+  if (!bk) { showToast('⚠ ' + (API._lastError || 'Không xếp được bàn'), '#c62828'); return false; }
+  closeModal('walkInModal');
+  document.getElementById('walkInForm').reset();
+  setFilter('seated');
+  showToast(`✓ Đã xếp bàn ${bk.seatId} cho ${bk.guests} khách`);
+  return false;
+}
+
+function complete(id) {
+  if (!confirm(`Hoàn thành booking ${id}?`)) return;
+  API.bookings.complete(id);
+  renderBookings();
+  showToast('✓ Đã hoàn thành');
+}
+
+function cancel(id) {
+  if (!confirm(`Hủy booking ${id}?`)) return;
+  API.bookings.cancel(id);
+  renderBookings();
+  showToast('✓ Đã hủy booking');
+}
+
+function noShow(id) {
+  if (!confirm(`Đánh dấu khách không đến cho booking ${id}?\nBàn sẽ được nhả và số lần no-show của khách tăng thêm 1.`)) return;
+  const r = API.bookings.markNoShow(id);
+  if (!r) { showToast('⚠ Không đánh dấu được — booking có thể đã xử lý', '#c62828'); return; }
+  renderBookings();
+  showToast('⚠ Đã ghi nhận khách không đến');
+}
+
+function completeAll() {
+  const active = API.bookings.getAll().filter(b => b.status === 'confirmed' || b.status === 'held' || b.status === 'seated');
+  if (active.length === 0) { showToast('Không có booking nào!', '#856404'); return; }
+  if (!confirm(`Hoàn thành ${active.length} booking?`)) return;
+  active.forEach(b => API.bookings.complete(b.id));
+  renderBookings();
+  showToast(`✓ Đã hoàn thành ${active.length} booking`);
+}
+</script>
+
+</body>
+</html>

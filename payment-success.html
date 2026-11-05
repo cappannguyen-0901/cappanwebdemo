@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Thanh toán cọc — CAPPAN</title>
+<meta name="description" content="CAPPAN — xác nhận thanh toán cọc giữ bàn (demo).">
+<meta property="og:title" content="CAPPAN – Thanh toán cọc giữ bàn">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<style>
+  .pay-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--cream, #F6EFE3); }
+  .pay-card { width: min(560px, 100%); background: linear-gradient(135deg, #FFFDF7, #FBEFD2); border: 1.5px solid #E7C873; border-radius: 22px; padding: 28px; box-shadow: 0 18px 50px rgba(111,78,55,.16); color: #4A2E20; }
+  .pay-icon { font-size: 2.6rem; line-height: 1; }
+  .pay-title { font-family: var(--font-heading, Georgia, serif); font-size: 1.6rem; margin: 8px 0 4px; color: #4A2E20; }
+  .pay-sub { color: #8A6A55; font-size: .86rem; line-height: 1.6; }
+  .pay-info { margin: 18px 0; padding: 14px; border: 1px dashed #D9B84A; border-radius: 14px; background: rgba(255,255,255,.55); font-size: .88rem; line-height: 1.7; }
+  .pay-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .pay-actions a { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 999px; border: 1.5px solid #C9A227; color: #4A2E20; text-decoration: none; font-weight: 700; font-size: .84rem; }
+  .pay-actions a.primary { background: linear-gradient(135deg,#E7C873,#C9A227); border-color: transparent; }
+  .pay-error { border-color: #E8B4B4; background: #FFF5F5; }
+  [data-theme="dark"] .pay-page { background: #12100E; }
+  [data-theme="dark"] .pay-card { background: linear-gradient(135deg,#262019,#3A2D16); border-color: #5C4822; color: #F3DC82; }
+  [data-theme="dark"] .pay-title { color: #F3DC82; }
+  [data-theme="dark"] .pay-info { background: rgba(255,255,255,.04); border-color: #5C4822; }
+  [data-theme="dark"] .pay-actions a { color: #F3DC82; border-color: #5C4822; }
+  [data-theme="dark"] .pay-error { background: #2A1616; border-color: #5C2A2A; }
+</style>
+<script>
+(function(){try{if(!/\/staff-/.test(location.pathname))document.documentElement.classList.add('chat-guest');if(localStorage.getItem('cappan_chat_is_open')==='1')document.documentElement.setAttribute('data-chat-open','1');}catch(e){}})();
+</script>
+</head>
+<body data-page="payment">
+<header class="app-header">
+  <a class="logo" href="index.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Coffee &amp; More - Home Study</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav">
+    <ul class="nav-list">
+      <li><a href="index.html">Trang chủ</a></li>
+      <li><a href="menu.html">Thực đơn</a></li>
+      <li><a href="booking.html">Đặt chỗ</a></li>
+      <li><a href="order.html">Đặt nước</a></li>
+      <li><a href="tracking.html">Theo dõi đơn</a></li>
+      <li><a href="contact.html">Liên hệ</a></li>
+    </ul>
+    <div class="user-area" id="userArea"></div>
+    <button class="theme-toggle" aria-label="Chuyển chế độ sáng/tối" id="themeToggle" onclick="toggleDarkMode()" title="Chuyển chế độ Sáng/Tối">🌙</button>
+  </nav>
+</header>
+<main class="pay-page">
+  <section class="pay-card" id="payCard">
+    <div class="pay-icon" id="payIcon">⏳</div>
+    <h1 class="pay-title" id="payTitle">Đang xác nhận thanh toán…</h1>
+    <p class="pay-sub" id="paySub">CAPPAN đang kiểm tra giao dịch cọc giữ bàn.</p>
+    <div class="pay-info" id="payInfo" hidden></div>
+    <div class="pay-actions" id="payActions" hidden>
+      <a class="primary" href="index.html">Về trang chủ</a>
+      <a href="profile.html">Booking của tôi</a>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status">✓</div>
+<!-- Khung chat ẩn để đồng nhất layout khách (trang thanh toán không mở chat) -->
+<div id="chatBox" hidden><div id="chatBody"></div><input id="chatInput" type="text" aria-hidden="true"></div>
+<footer class="app-footer">
+  <div class="footer-brand">CAPP<span>AN</span></div>
+  <div class="footer-tagline">Coffee &amp; More - Home Study</div>
+  <div class="footer-links">
+    <a href="index.html">Trang chủ</a>
+    <a href="menu.html">Thực đơn</a>
+    <a href="booking.html">Đặt chỗ</a>
+    <a href="order.html">Đặt nước</a>
+    <a href="cart.html">Giỏ hàng</a>
+    <a href="tracking.html">Theo dõi đơn</a>
+    <a href="contact.html">Liên hệ</a>
+    <a href="privacy.html">Chính sách bảo mật</a>
+  </div>
+  <div class="footer-copy">© CAPPANNGUYEN · Công viên Gia Định, P. Hạnh Thông, Q.Gò Vấp, TP.HCM · Hotline: 0366 444 038</div>
+</footer>
+
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id') || '';
+  const token = params.get('token') || '';
+  const icon = document.getElementById('payIcon');
+  const title = document.getElementById('payTitle');
+  const sub = document.getElementById('paySub');
+  const info = document.getElementById('payInfo');
+  const actions = document.getElementById('payActions');
+
+  function money(n) { return API.utils.formatVND(Number(n) || 0); }
+  function fmtDate(s) { return s ? String(s).split('-').reverse().join('/') : ''; }
+
+  if (!id || !token) {
+    icon.textContent = '⚠️';
+    title.textContent = 'Thiếu thông tin thanh toán';
+    sub.textContent = 'Link không hợp lệ hoặc đã hết hạn. Vui lòng quay lại chat để tạo lại QR.';
+    actions.hidden = false;
+    document.getElementById('payCard').classList.add('pay-error');
+    return;
+  }
+
+  const res = API.bookings.confirmDepositByToken(id, token);
+  if (!res || !res.ok) {
+    icon.textContent = '❌';
+    title.textContent = 'Thanh toán chưa thành công';
+    sub.textContent = res && res.error ? res.error : 'Không xác nhận được giao dịch.';
+    actions.hidden = false;
+    document.getElementById('payCard').classList.add('pay-error');
+    return;
+  }
+
+  const bk = res.booking;
+  icon.textContent = '✅';
+  title.textContent = 'Thanh toán cọc thành công!';
+  sub.textContent = 'CAPPAN đã ghi nhận cọc và giữ bàn cho bạn. Hẹn gặp bạn tại quán!';
+  info.innerHTML = `🪑 Bàn <b>${bk.seatId}</b> · 👥 <b>${bk.guests} người</b><br>
+    🕒 <b>${bk.time}</b> ${fmtDate(bk.date)}<br>
+    💳 Cọc đã thu: <b>${money(bk.deposit)}</b><br>
+    🎫 Mã giữ bàn: <b>${bk.id}</b>`;
+  info.hidden = false;
+  actions.hidden = false;
+  try {
+    if (window.opener) window.opener.postMessage({ type: 'cappan:payment-success', bookingId: bk.id }, '*');
+  } catch (e) {}
+})();
+</script>
+</body>
+<script>
+  /* Điều hướng tối thiểu cho header của trang thanh toán */
+  window.toggleMobileMenu = function () {
+    var nav = document.getElementById('mainNav');
+    if (nav) nav.classList.toggle('open');
+  };
+  window.toggleDarkMode = function () {
+    var root = document.documentElement;
+    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('cappan_' + 'theme', next); } catch (e) {}
+  };
+</script>
+</html>

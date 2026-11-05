@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Thu ngân — CAPPAN Staff</title>
+<!-- CAPPAN head chuẩn hoá -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:title" content="CAPPAN – Coffee & More">
+<meta property="og:description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="chat-panel.css">
+<link rel="stylesheet" href="staff.css">
+<link rel="stylesheet" href="cashier.css">
+<link rel="stylesheet" href="dark-mode.css">
+<!-- Nhúng file CSS mới ở cuối cùng để đè lên tất cả -->
+<link rel="stylesheet" href="card-premium.css"> 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<script>
+/* Đặt sẵn độ rộng + trạng thái chat TRƯỚC khi trình duyệt vẽ lần đầu → không bị dựt khi đổi trang */
+(function(){try{var d=document.documentElement,
+w=parseInt(localStorage.getItem('cappan_chat_panel_width'),10);
+if(w)d.style.setProperty('--chat-w',Math.max(280,Math.min(600,w))+'px');
+d.dataset.chat=localStorage.getItem('cappan_chat_panel_collapsed')==='1'?'collapsed':'open';
+d.classList.add('no-anim');}catch(e){}})();
+</script>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<script>
+(function(){try{if(localStorage.getItem('cappan_chat_is_open')==='1')document.documentElement.setAttribute('data-chat-open','1');}catch(e){}})();
+</script>
+</head>
+<body data-page="staff-cashier">
+
+<header class="app-header">
+  <a class="logo" href="staff-dashboard.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Staff Panel</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav"></nav>
+</header>
+
+<div class="dashboard-layout" id="dashboardLayout">
+  <div class="dashboard-main">
+    <section class="section">
+      <div class="staff-header">
+        <div>
+          <h1 class="staff-title">🧾 Thu ngân tại quầy</h1>
+          <p class="staff-sub">Chọn món → áp mã → thu tiền. Giá luôn tính lại từ thực đơn.</p>
+        </div>
+      </div>
+
+      <div class="cashier-layout">
+        <div class="staff-panel cashier-menu">
+          <div class="panel-header">
+            <h3>Thực đơn</h3>
+            <span class="pos-hint" id="posCount"></span>
+          </div>
+          <div class="pos-toolbar">
+            <input type="search" id="posSearch" placeholder="Tìm món..." autocomplete="off" aria-label="Tìm món" oninput="renderPosMenu()">
+            <div class="staff-tabs" id="posCats"></div>
+          </div>
+          <div id="posMenu" class="pos-menu-grid"></div>
+        </div>
+
+        <div class="staff-panel cashier-bill">
+          <div class="panel-header">
+            <h3>Hoá đơn</h3>
+            <button class="btn-mini-reset" type="button" onclick="clearBill()">🗑 Xoá</button>
+          </div>
+
+          <div id="posLines" class="pos-bill-lines">
+            <p class="empty-note">Chưa chọn món nào.</p>
+          </div>
+
+          <div class="pos-summary" id="posSummary"></div>
+
+          <div class="pos-promo">
+            <input type="text" id="posPromo" placeholder="Mã giảm giá (VD: CAFE20)" autocomplete="off" aria-label="Mã giảm giá">
+            <button class="btn-outline" type="button" onclick="applyPosPromo()">Áp dụng</button>
+          </div>
+          <div class="pos-msg" id="posMsg" role="status"></div>
+
+          <div class="pos-pay-grid">
+            <label>Hình thức
+              <select id="posMethod" onchange="renderBill()">
+                <option value="cash">Tiền mặt</option>
+                <option value="transfer">Chuyển khoản</option>
+                <option value="card">Thẻ</option>
+              </select>
+            </label>
+            <label id="posCashRow">Khách đưa
+              <input type="number" id="posCash" min="0" step="1000" placeholder="0" oninput="renderChange()">
+            </label>
+          </div>
+          <div class="pos-change" id="posChange"></div>
+
+          <button class="btn btn-block" type="button" onclick="checkoutPos()">Thu tiền</button>
+        </div>
+      </div>
+
+      <div class="staff-panel" style="margin-top:22px;">
+        <div class="panel-header">
+          <h3>Hoá đơn gần đây</h3>
+          <span class="pos-hint" id="posToday"></span>
+        </div>
+        <div id="posRecent"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="panel-resizer" id="panelResizer"></div>
+
+  <aside class="chat-panel" id="chatPanel">
+    <div class="chat-panel-header">
+      <span class="chat-panel-title">🤖 Trợ lý CAPPAN</span>
+      <div class="chat-panel-actions">
+        <button class="chat-panel-btn" id="btnCollapseChat" title="Thu gọn bảng chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+        <button class="chat-panel-btn emoji-btn" onclick="clearAICache()" title="Xóa cache AI">🧹</button>
+        <button class="chat-panel-btn" id="btnClearChat" title="Xóa lịch sử">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-panel-footer">
+      <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+      <button id="btnSendChat" title="Gửi">▶</button>
+    </div>
+  </aside>
+
+  <button class="chat-float-btn" id="chatFloatBtn" title="Mở trợ lý">
+    <span>🤖</span>
+  </button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<!-- ============ SCRIPTS ============ -->
+<!-- ══════════════ 1. DATA LAYER (không phụ thuộc gì) ══════════════ -->
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+
+<!-- ══════════════ 2. AI INPUT/OUTPUT (chỉ cần schema) ══════════════ -->
+<script src="js/ai/ai-input.js"></script>
+<script src="js/ai/ai-output.js"></script>
+
+<!-- ══════════════ 3. API + REALTIME (cần data) ══════════════ -->
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+
+<!-- ══════════════ 4. GUARD (cần API) ══════════════ -->
+<script src="js/staff-guard.js"></script>
+
+<!-- ══════════════ 5. AI SUB-MODULES (thứ tự quan trọng) ══════════════ -->
+<script src="js/ai/item-lookup.js"></script>
+<script src="js/ai/injection-guard.js"></script>
+<script src="js/ai/multi-intent-splitter.js"></script>
+<script src="js/ai/intent-authorization.js"></script>
+<script src="js/ai/emotional-handler.js"></script>
+<script src="js/ai/user-memory.js"></script>
+<script src="js/ai/brain-legacy.js"></script>
+<script src="js/ai/brain.js"></script>
+
+<!-- ══════════════ 6. CORE (cần API + AI) ══════════════ -->
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+
+<!-- ══════════════ 7. CHAT PANEL (cần AIBrain + main) ══════════════ -->
+<script src="js/chat-panel.js"></script>
+<script src="js/staff-nav.js"></script>
+
+<!-- ══════════════ 8. THU NGÂN (cần API + main) ══════════════ -->
+<script src="js/cashier.js"></script>
+
+<!-- ══════════════ 9. CHAT INTERACTIONS ══════════════ -->
+<script src="js/ai/chat-interactions.js"></script>
+
+<!-- ══════════════ 10. HANDOVER ══════════════ -->
+<script src="js/ai/handover.js"></script>
+
+<!-- ══════════════ 11. HIỆU ỨNG + DARK MODE + DEMO (CUỐI CÙNG) ══════════════ -->
+<script src="js/demo.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/dark-mode.js"></script>
+
+</body>
+</html>

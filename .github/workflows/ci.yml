@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Lint
+        run: node scripts/lint.mjs
+      - name: Test (AI + tích hợp + tĩnh)
+        run: node --test "tests/*.test.mjs" "tests/integration/*.test.mjs"
+      - name: Build demo
+        run: node scripts/build.mjs
+      - name: Verify dist
+        run: node scripts/verify.mjs
+      - name: Build prod
+        run: node scripts/build.mjs --mode prod
+      - name: Verify prod
+        run: node scripts/verify.mjs

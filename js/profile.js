@@ -1,0 +1,272 @@
+/* ============================================================
+   PROFILE — KHÁCH HÀNG (5 tab)
+   SUPREME PATCHED 2026: Thêm nút Hủy đơn + cancelMyOrder
+============================================================ */
+
+const Profile = {
+
+  init() {
+    if (!document.getElementById('profileContent')) return;
+    this.render();
+
+    // ⚡ FIX: Đọc tham số tab từ URL để tự động chuyển tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab && document.getElementById('panel-' + tab)) {
+      this.switchTab(tab);}},
+
+  render() {
+    const user = API.users.getCurrent();
+    const guest = document.getElementById('profileGuest');
+    const content = document.getElementById('profileContent');
+    if (!guest || !content) return;
+
+    if (!user) {
+      guest.hidden = false;
+      content.hidden = true;
+      return;
+    }
+    guest.hidden = true;
+    content.hidden = false;
+
+    this.renderHeader(user);
+    this.renderForm(user);
+    this.renderBookings(user);
+    this.renderOrders(user);
+    this.renderVouchers(user);
+  },
+
+  renderHeader(user) {
+    const avatar = document.getElementById('profileAvatar');
+    const name = document.getElementById('profileName');
+    const phone = document.getElementById('profilePhone');
+    const joined = document.getElementById('profileJoined');
+
+    if (avatar) avatar.textContent = (user.name || user.phone).charAt(0).toUpperCase();
+    if (name) name.textContent = user.name || 'Khách';
+    if (phone) phone.textContent = '📞 ' + (user.phone || '');
+    if (joined) {
+      joined.textContent = user.joinedAt
+        ? '🗓️ Thành viên từ ' + new Date(user.joinedAt).toLocaleDateString('vi-VN')
+        : '';
+    }
+  },
+
+  renderForm(user) {
+    const fields = {
+      editName: user.name || '',
+      editPhone: user.phone || '',
+      editEmail: user.email || '',
+      editBirthday: user.birthday || '',
+      editAddress: user.address || ''
+    };
+    Object.entries(fields).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+    });
+  },
+
+  renderBookings(user) {
+    const el = document.getElementById('bookingsList');
+    if (!el) return;
+    const bookings = API.bookings.getByUser(user.id).slice().reverse();
+
+    if (bookings.length === 0) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🪑</div>
+          <p>Bạn chưa có lịch sử đặt chỗ nào.</p>
+          <a href="booking.html" class="btn">Đặt chỗ ngay</a>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = '<div class="history-list">' + bookings.map(b => {
+      const floor = API.floors.getById(b.floorId);
+      const canCancel = b.status === 'confirmed';
+      const statusText = b.status === 'cancelled' ? 'Đã hủy'
+        : b.status === 'completed' ? 'Hoàn tất'
+        : b.status === 'no_show' ? 'Không đến'
+        : b.status === 'seated' ? 'Đang ngồi'
+        : 'Đang hoạt động';
+      const statusClass = (b.status === 'cancelled' || b.status === 'no_show') ? 'cancelled' : b.status === 'held' ? 'held' : 'success';
+      return `
+        <div class="history-card">
+          <div class="history-icon">🪑</div>
+          <div class="history-body">
+            <div class="history-title">Chỗ ${b.seatId} – ${floor ? floor.name : b.floorId}</div>
+            <div class="history-meta">
+              <span>📅 ${b.date}</span>
+              <span>🕐 ${b.time}</span>
+              <span>👥 ${b.guests || 2} người</span>
+            </div>
+            ${b.note ? `<div class="history-note">📝 ${esc(b.note)}</div>` : ''}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+            <div class="history-status ${statusClass}">
+              ${statusText}
+            </div>
+            ${canCancel ? `<button class="btn-outline" style="padding:4px 12px; font-size:0.78rem;"
+              onclick="cancelBooking('${b.id}')">Hủy</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('') + '</div>';
+  },
+
+  renderOrders(user) {
+    const el = document.getElementById('ordersList');
+    if (!el) return;
+    const orders = API.orders.getByUser(user.id).slice().reverse();
+
+    if (orders.length === 0) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <p>Bạn chưa có đơn hàng nào.</p>
+          <a href="order.html" class="btn">Đặt nước ngay</a>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = '<div class="history-list">' + orders.map(o => {
+      const isCancelled = o.status === 'cancelled';
+      const isDone = !isCancelled && o.step >= 4;
+      return `
+        <div class="history-card">
+          <div class="history-icon">📦</div>
+          <div class="history-body">
+            <div class="history-title">
+              Đơn #${o.id}
+              <span class="order-status ${isCancelled ? 'cancelled' : (isDone ? 'success' : 'pending')}">
+                ${isCancelled ? 'Đã hủy' : (isDone ? 'Đã giao' : 'Đang xử lý')}
+              </span>
+            </div>
+            <div class="history-meta"><span>📅 ${new Date(o.createdAt).toLocaleString('vi-VN')}</span></div>
+            <div class="order-items">
+              ${o.items.map(i => `<span class="order-item-tag">${esc(i.name)} × ${i.qty}</span>`).join('')}
+            </div>
+            ${o.address ? `<div class="history-note">📍 ${esc(o.address)}</div>` : ''}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+            <div class="history-total">
+              <div class="total-label">Tổng</div>
+              <div class="total-value">${API.utils.formatVND(o.total)}</div>
+            </div>
+            ${!isCancelled && !isDone && o.step < 2 ? `
+              <button class="btn-outline" style="padding:4px 12px; font-size:0.78rem; border-color:#c62828; color:#c62828;"
+                onclick="cancelMyOrder('${o.id}')">Hủy đơn</button>` : ''}
+            ${(isCancelled || isDone) ? `
+              <button class="btn-outline" style="padding:4px 12px; font-size:0.78rem;"
+                onclick="reorder('${o.id}')">Đặt lại</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('') + '</div>';
+  },
+
+    renderVouchers(user) {
+    const el = document.getElementById('vouchersList');
+    if (!el) return;
+    try {
+      const orders = API.orders.getByUser(user.id).filter(o => o.step >= 4 && o.status !== 'cancelled');
+      const points = Math.floor(orders.reduce((s, o) => s + (Number(o.total) || 0), 0) / 10000);
+      
+      const promos = [];
+      API.promotions.getActive().forEach(p => {
+        try {
+          if (API.promotions.evaluate(p.code, Math.max(p.minOrder || 0, 1), 15000, user.id).ok) promos.push(p);
+        } catch (e) {}
+      });
+      
+      const fmtDate = d => d ? d.split('-').reverse().join('/') : '';
+      
+      el.innerHTML = `
+        <div class="voucher-header">
+          <div class="points-box"><div class="points-value">${points}</div><div class="points-label">Điểm tích lũy</div></div>
+          <p class="points-hint">💡 10.000đ chi tiêu = 1 điểm</p>
+        </div>
+        ${promos.length === 0 ? `<div class="empty-state"><div class="empty-icon">🎁</div><p>Hiện chưa có khuyến mãi nào.</p></div>` : `
+        <div class="voucher-grid">
+          ${promos.map(p => `<div class="voucher-card"><div class="voucher-code">${esc(p.code)}</div><div class="voucher-desc">${esc(p.description || p.name)}</div></div>`).join('')}
+        </div>`}
+      `;
+    } catch (e) {
+      el.innerHTML = '<p class="empty-note">Không thể tải ưu đãi. Vui lòng thử lại sau.</p>';
+    }
+  },
+
+  save() {
+    const user = API.users.getCurrent();
+    if (!user) return;
+    const patch = {
+      name: document.getElementById('editName').value.trim() || user.name,
+      email: document.getElementById('editEmail').value.trim(),
+      birthday: document.getElementById('editBirthday').value,
+      address: document.getElementById('editAddress').value.trim()
+    };
+    API.users.update(user.id, patch);
+    if (typeof updateUserArea === 'function') updateUserArea();
+    this.render();
+    showToast('✓ Đã lưu thông tin!');
+  },
+
+  switchTab(tabId) {
+    document.querySelectorAll('.profile-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.tab === tabId)
+    );
+    document.querySelectorAll('.profile-panel').forEach(p =>
+      p.classList.toggle('active', p.id === 'panel-' + tabId)
+    );
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => Profile.init());
+
+/* ---------- ACTIONS ---------- */
+window.saveProfile = () => Profile.save();
+window.switchProfileTab = (id) => Profile.switchTab(id);
+
+window.cancelBooking = function(bookingId) {
+  if (!confirm('Hủy đặt chỗ này?')) return;
+  API.bookings.cancel(bookingId);
+  showToast('✓ Đã hủy đặt chỗ');
+  const user = API.users.getCurrent();
+  Profile.renderBookings(user);
+};
+
+// PATCH 4.2: Thêm cancelMyOrder
+window.cancelMyOrder = function(orderId) {
+  if (!confirm('Hủy đơn này? Sau khi hủy không thể khôi phục.')) return;
+  const u = API.users.getCurrent();
+  const o = API.orders.getById(orderId);
+  if (!o || !u || o.userId !== u.id) { showToast('⚠ Không tìm thấy đơn', '#c62828'); return; }
+  if (o.step >= 2) { showToast('⚠ Đơn đã qua bước chuẩn bị, vui lòng gọi 0366 444 038', '#c62828'); return; }
+  API.orders.cancel(orderId);
+  showToast(`✓ Đã hủy đơn ${orderId}`);
+  Profile.renderOrders(u);
+};
+
+window.reorder = function (orderId) {
+  const order = API.orders.getById(orderId);
+  if (!order) return;
+  if (!confirm(`Thêm lại ${order.items.length} món vào giỏ?`)) return;
+
+  order.items.forEach(it => {
+    const addTimes = Math.max(1, Number(it.qty) || 1);
+    for (let k = 0; k < addTimes; k++) {
+      API.cart.add({
+        itemId: it.itemId,
+        name: it.name,
+        price: it.price,
+        img: it.img,
+        size: it.size || 'M',
+        toppings: it.toppings || []
+      });
+    }
+  });
+
+  updateUserArea();
+  showToast(`✓ Đã thêm ${order.items.length} món vào giỏ!`);
+  setTimeout(() => { window.location.href = 'cart.html'; }, 800);
+};

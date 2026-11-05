@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Thống kê — CAPPAN Staff</title>
+<!-- CAPPAN head chuẩn hoá -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:title" content="CAPPAN – Coffee & More">
+<meta property="og:description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn theo sơ đồ, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="chat-panel.css">
+<link rel="stylesheet" href="staff.css">
+<link rel="stylesheet" href="dark-mode.css">
+<!-- Nhúng file CSS mới ở cuối cùng để đè lên tất cả -->
+<link rel="stylesheet" href="card-premium.css"> 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<script>
+/* Đặt sẵn độ rộng + trạng thái chat TRƯỚC khi trình duyệt vẽ lần đầu → không bị dựt khi đổi trang */
+(function(){try{var d=document.documentElement,
+w=parseInt(localStorage.getItem('cappan_chat_panel_width'),10);
+if(w)d.style.setProperty('--chat-w',Math.max(280,Math.min(600,w))+'px');
+d.dataset.chat=localStorage.getItem('cappan_chat_panel_collapsed')==='1'?'collapsed':'open';
+d.classList.add('no-anim');}catch(e){}})();
+</script>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<script>
+(function(){try{if(localStorage.getItem('cappan_chat_is_open')==='1')document.documentElement.setAttribute('data-chat-open','1');}catch(e){}})();
+</script>
+</head>
+<body data-page="staff-stats">
+
+<header class="app-header">
+  <a class="logo" href="staff-dashboard.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Staff Panel</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav"></nav>
+</header>
+
+<div class="dashboard-layout" id="dashboardLayout">
+  <div class="dashboard-main">
+    <section class="section">
+
+      <div class="stats-head">
+        <div>
+          <h2 class="section-title" style="text-align:left; margin-bottom:4px;">📈 Báo cáo &amp; thống kê</h2>
+          <p class="section-sub" style="text-align:left; margin:0;">Doanh thu, đơn hàng, bàn, cọc và gợi ý hướng đi tiếp theo.</p>
+        </div>
+        <div class="stats-head-actions">
+          <div class="stats-period" id="statsPeriod"></div>
+          <button type="button" class="btn-outline" style="font-size:0.8rem;padding:7px 12px;" onclick="DemoData.automationDemo()">🎬 Demo automation</button>
+          <button type="button" class="btn-outline" style="font-size:0.8rem;padding:7px 12px;" onclick="exportStatsCSV()">⬇ Xuất CSV</button>
+        </div>
+      </div>
+
+      <div class="range-chips" id="rangeChips" role="group" aria-label="Chọn khoảng thời gian">
+        <button type="button" class="range-chip active" data-range="today" onclick="setStatsRange('today')">Hôm nay</button>
+        <button type="button" class="range-chip" data-range="week" onclick="setStatsRange('week')">Tuần này</button>
+        <button type="button" class="range-chip" data-range="month" onclick="setStatsRange('month')">Tháng này</button>
+        <button type="button" class="range-chip" data-range="year" onclick="setStatsRange('year')">Năm nay</button>
+      </div>
+
+      <div class="stats-grid stats-grid-kpi" id="statsGrid"></div>
+
+      <div class="staff-panel report-panel" id="reportPanel">
+        <div class="panel-header">
+          <h3>📋 Báo cáo cuối kỳ &amp; gợi ý kinh doanh</h3>
+          <div class="report-actions">
+            <button type="button" class="btn-outline" onclick="openEmailSettings()">⚙ Cấu hình email</button>
+            <button type="button" class="btn-outline" onclick="copyReport()">📋 Copy</button>
+            <button type="button" class="btn-outline" onclick="downloadReportHtml()">⬇ HTML</button>
+            <button type="button" class="btn-outline" onclick="downloadReportCsv()">⬇ CSV</button>
+            <button type="button" class="btn" onclick="sendReportEmail()">📧 Gửi email báo cáo</button>
+          </div>
+        </div>
+        <div class="report-headline" id="reportHeadline"></div>
+        <div class="report-insights" id="reportInsights"></div>
+        <p class="report-note" id="reportNote">Báo cáo dùng dữ liệu demo trên trình duyệt. Gửi email qua ứng dụng mail hoặc EmailJS (tùy chọn).</p>
+      </div>
+
+
+      <div class="stats-layout">
+        <div class="staff-panel stats-chart-panel">
+          <div class="panel-header">
+            <h3>📊 Doanh thu theo ngày</h3>
+            <span class="panel-hint" id="chartMeta"></span>
+          </div>
+          <div class="chart-bars" id="chartBars" aria-label="Biểu đồ doanh thu"></div>
+        </div>
+        <div class="staff-panel">
+          <div class="panel-header"><h3>🏪 Kênh bán &amp; thanh toán</h3></div>
+          <div id="channelPayment"></div>
+        </div>
+      </div>
+
+      <div class="stats-layout">
+        <div class="staff-panel">
+          <div class="panel-header"><h3>🏆 Top 5 món bán chạy</h3><span class="panel-hint" id="topMeta"></span></div>
+          <div id="topItems"></div>
+        </div>
+        <div class="staff-panel">
+          <div class="panel-header"><h3>🪑 Bàn &amp; booking</h3></div>
+          <div id="bookingStats"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="panel-resizer" id="panelResizer"></div>
+
+  <aside class="chat-panel" id="chatPanel">
+    <div class="chat-panel-header">
+      <span class="chat-panel-title">🤖 Trợ lý CAPPAN</span>
+      <div class="chat-panel-actions">
+        <button class="chat-panel-btn" id="btnCollapseChat" title="Thu gọn bảng chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+        <button class="chat-panel-btn emoji-btn" onclick="clearAICache()" title="Xóa cache AI">🧹</button>
+        <button class="chat-panel-btn" id="btnClearChat" title="Xóa lịch sử">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-panel-footer">
+      <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+      <button id="btnSendChat" title="Gửi">▶</button>
+    </div>
+  </aside>
+
+  <button class="chat-float-btn" id="chatFloatBtn" title="Mở trợ lý"><span>🤖</span></button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<!-- MODAL: CẤU HÌNH EMAIL BÁO CÁO -->
+<div class="modal-overlay" id="emailSettingsModal">
+  <div class="modal-box wide">
+    <button class="modal-close" onclick="closeModal('emailSettingsModal')">✕</button>
+    <h2>Cấu hình gửi email</h2>
+    <p class="modal-sub">Mặc định mở ứng dụng mail (mailto). EmailJS là tùy chọn cho chủ quán; không đưa khóa thật vào bản public.</p>
+    <form id="emailSettingsForm" onsubmit="return saveEmailSettings(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Email nhận báo cáo</label>
+          <input type="email" id="emRecipient" placeholder="owner@example.com">
+        </div>
+        <div class="form-group">
+          <label>Phương thức</label>
+          <select id="emMethod" onchange="toggleEmailJsFields()">
+            <option value="mailto">Mở ứng dụng mail (mailto)</option>
+            <option value="emailjs">EmailJS (gửi trực tiếp)</option>
+          </select>
+        </div>
+      </div>
+      <div id="emailJsFields" hidden>
+        <div class="form-grid">
+          <div class="form-group"><label>EmailJS Service ID</label><input type="text" id="emService" placeholder="service_xxx"></div>
+          <div class="form-group"><label>EmailJS Template ID</label><input type="text" id="emTemplate" placeholder="template_xxx"></div>
+          <div class="form-group"><label>EmailJS Public Key</label><input type="text" id="emPublic" placeholder="public_xxx"></div>
+        </div>
+        <p class="report-note">Template cần có biến <code>to_email</code>, <code>subject</code>, <code>message</code> (hoặc <code>html</code>). Public Key sẽ hiện trong trình duyệt — chỉ dùng cho demo.</p>
+      </div>
+      <button type="submit" class="btn btn-block">Lưu cấu hình</button>
+    </form>
+  </div>
+</div>
+
+
+<!-- ══════════════ 1. DATA LAYER (không phụ thuộc gì) ══════════════ -->
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+
+<!-- ══════════════ 2. AI INPUT/OUTPUT (chỉ cần schema) ══════════════ -->
+<script src="js/ai/ai-input.js"></script>
+<script src="js/ai/ai-output.js"></script>
+
+<!-- ══════════════ 3. API + REALTIME (cần data) ══════════════ -->
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/report-engine.js"></script>
+
+<!-- ══════════════ 4. GUARD (cần API) ══════════════ -->
+<script src="js/staff-guard.js"></script>
+
+<!-- ══════════════ 5. AI SUB-MODULES (thứ tự quan trọng) ══════════════ -->
+<script src="js/ai/item-lookup.js"></script>
+<script src="js/ai/injection-guard.js"></script>
+<script src="js/ai/multi-intent-splitter.js"></script>
+<script src="js/ai/intent-authorization.js"></script>
+<script src="js/ai/emotional-handler.js"></script>
+<script src="js/ai/user-memory.js"></script>
+<script src="js/ai/brain-legacy.js"></script>
+<script src="js/ai/brain.js"></script>
+
+<!-- ══════════════ 6. CORE (cần API + AI) ══════════════ -->
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+
+<!-- ══════════════ 7. CHAT PANEL (cần AIBrain + main) ══════════════ -->
+<script src="js/chat-panel.js"></script>
+<script src="js/staff-nav.js"></script>
+
+<!-- ══════════════ 8. ⚡ MỚI: CHAT INTERACTIONS ══════════════ -->
+<!-- Phải SAU brain.js + main.js + chat-panel.js (vì override AIBrain) -->
+<script src="js/ai/chat-interactions.js"></script>
+
+<!-- ══════════════ 9. HANDOVER (staff cũng escalate được) ══════════════ -->
+<script src="js/ai/handover.js"></script>
+
+<!-- ══════════════ 10. HIỆU ỨNG + DARK MODE + DEMO (CUỐI CÙNG) ══════════════ -->
+<script src="js/demo.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/dark-mode.js"></script>
+
+<!-- ══════════════ 11. INLINE SCRIPT CỦA TỪNG TRANG ══════════════ -->
+<!-- (staff-dashboard, staff-orders... tự chèn inline ở đây) -->
+
+<script>
+const RANGE_LABELS = { today: 'Hôm nay', week: 'Tuần này', month: 'Tháng này', year: 'Năm nay', '7d': '7 ngày', '30d': '30 ngày' };
+let statsRange = 'today';
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!Auth.requireStaff()) return;
+  renderStaffNav('stats');
+  renderStatsPage();
+  window.addEventListener('cappan:sync', renderStatsPage);
+  window.addEventListener('storage', renderStatsPage);
+});
+
+function setStatsRange(r) {
+  statsRange = r;
+  document.querySelectorAll('#rangeChips .range-chip').forEach(b =>
+    b.classList.toggle('active', b.dataset.range === r));
+  renderStatsPage();
+}
+
+function money(n) { return API.utils.formatVND(Number(n) || 0); }
+
+function exportStatsCSV() {
+  try {
+    const preset = API.stats.preset(statsRange);
+    const r = API.stats.range(preset.from, preset.to);
+    const rows = [['Ky', RANGE_LABELS[statsRange] || preset.label], ['Tu', fmtDate(preset.from)], ['Den', fmtDate(preset.to)], [], ['Ngay', 'Doanh thu', 'Don hoan tat', 'Tong don']];
+    const series = statsRange === 'year' ? API.stats.monthlySeries(preset.from, preset.to) : API.stats.dailySeries(preset.from, preset.to);
+    series.forEach(d => rows.push([d.iso, d.revenue, d.count, d.orders]));
+    rows.push([], ['Tong doanh thu', r.revenue], ['Don hoan tat', r.completedCount], ['AOV', r.aov], ['Coc da thu', API.stats.bookingsSummary().depositCollected]);
+    const csv = '\uFEFF' + rows.map(row => row.map(cell => '"' + String(cell == null ? '' : cell).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cappan-doanh-thu-' + preset.key + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast('✓ Đã xuất CSV doanh thu');
+  } catch (e) { showToast('⚠ Không xuất được CSV', '#c62828'); }
+}
+function shortMoney(n) {
+  const v = Number(n) || 0;
+  return v >= 1000000 ? (v / 1000000).toFixed(1).replace('.0', '') + 'tr' : Math.round(v / 1000) + 'k';
+}
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const p = n => String(n).padStart(2, '0');
+  return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+}
+
+function renderStatsPage() {
+  const preset = API.stats.preset(statsRange);
+  const cur = API.stats.range(preset.from, preset.to);
+  const trend = API.stats.trend(statsRange);
+  const summary = API.stats.bookingsSummary();
+  const depositsToday = API.stats.depositsToday();
+  const label = RANGE_LABELS[statsRange] || preset.label;
+
+  const periodEl = document.getElementById('statsPeriod');
+  if (periodEl) periodEl.textContent = fmtDate(preset.from) + ' — ' + fmtDate(preset.to);
+
+  const trendCls = trend.delta > 0 ? 'up' : trend.delta < 0 ? 'down' : 'flat';
+  const trendTxt = trend.delta > 0 ? '▲ ' + trend.pct + '%' : trend.delta < 0 ? '▼ ' + Math.abs(trend.pct) + '%' : '— 0%';
+  const kpis = [
+    { icon: '💰', label: 'Doanh thu', value: money(cur.revenue), sub: label + ' · ' + cur.completedCount + ' đơn hoàn tất', trend: trendTxt, trendCls },
+    { icon: '🧾', label: 'Đơn hoàn tất', value: cur.completedCount, sub: 'Tổng ' + cur.count + ' đơn · hủy ' + cur.cancelledCount, trend: '', trendCls: 'flat' },
+    { icon: '📈', label: 'Giá trị TB / đơn', value: money(cur.aov), sub: 'AOV ' + label.toLowerCase(), trend: '', trendCls: 'flat' },
+    { icon: '💳', label: 'Cọc đã thu', value: money(summary.depositCollected), sub: 'Hôm nay ' + money(depositsToday) + ' · chờ ' + money(summary.depositPending), trend: '', trendCls: 'flat' }
+  ];
+  document.getElementById('statsGrid').innerHTML = kpis.map(k => `
+    <div class="stat-card">
+      <div class="stat-icon">${k.icon}</div>
+      <div class="stat-info">
+        <div class="stat-value">${k.value}</div>
+        <div class="stat-label">${k.label}${k.trend ? ` <span class="stat-trend ${k.trendCls}">${k.trend}</span>` : ''}</div>
+        <div class="stat-sub">${k.sub}</div>
+      </div>
+    </div>
+  `).join('');
+
+  /* Chart: hôm nay hiển thị 7 ngày gần nhất; năm hiển thị theo tháng */
+  const days = statsRange === 'year'
+    ? API.stats.monthlySeries(preset.from, preset.to)
+    : (statsRange === 'today' ? API.stats.lastNDays(7) : API.stats.dailySeries(preset.from, preset.to));
+  const max = Math.max(1, ...days.map(d => d.revenue));
+  const chart = document.getElementById('chartBars');
+  const dense = days.length > 10;
+  chart.classList.toggle('dense', dense);
+  const labelStep = days.length > 20 ? 5 : days.length > 12 ? 2 : 1;
+  chart.innerHTML = days.map((d, i) => `
+    <div class="chart-col">
+      <div class="chart-bar-wrap">
+        <div class="chart-bar" style="--bar-height: ${Math.max(2, Math.round((d.revenue / max) * 100))}%;">
+          <span class="chart-tooltip">${money(d.revenue)} · ${d.count} đơn</span>
+        </div>
+      </div>
+      <div class="chart-label">${i % labelStep === 0 ? d.date : ''}</div>
+      <div class="chart-value">${i % labelStep === 0 ? shortMoney(d.revenue) : ''}</div>
+    </div>
+  `).join('');
+  requestAnimationFrame(() => setTimeout(() => {
+    document.querySelectorAll('#chartBars .chart-bar').forEach(el => {
+      el.style.height = el.style.getPropertyValue('--bar-height');
+    });
+  }, 30));
+  const chartMeta = document.getElementById('chartMeta');
+  if (chartMeta) chartMeta.textContent = statsRange === 'today' ? '7 ngày gần nhất' : label;
+
+  const totalChannel = (cur.byChannel.delivery || 0) + (cur.byChannel.pos || 0) || 1;
+  const payLabels = { cash: '💵 Tiền mặt', transfer: '🏦 Chuyển khoản', card: '💳 Thẻ', none: '— Chưa ghi nhận' };
+  const pay = cur.byPayment || {};
+  document.getElementById('channelPayment').innerHTML = `
+    <div class="split-row">
+      <div class="split-head"><span>🛵 Giao hàng</span><strong>${money(cur.byChannel.delivery || 0)}</strong></div>
+      <div class="split-bar"><i style="width:${Math.round((cur.byChannel.delivery || 0) / totalChannel * 100)}%"></i></div>
+    </div>
+    <div class="split-row">
+      <div class="split-head"><span>🏪 Tại quầy (POS)</span><strong>${money(cur.byChannel.pos || 0)}</strong></div>
+      <div class="split-bar pos"><i style="width:${Math.round((cur.byChannel.pos || 0) / totalChannel * 100)}%"></i></div>
+    </div>
+    <div class="stats-divider"></div>
+    ${Object.keys(payLabels).map(k => `
+      <div class="mini-row"><span>${payLabels[k]}</span><strong>${money(pay[k] || 0)}</strong></div>
+    `).join('')}
+  `;
+
+  const top = API.stats.topItemsInRange(preset.from, preset.to, 5);
+  const topMax = Math.max(1, ...top.map(t => t.qty));
+  document.getElementById('topItems').innerHTML = top.length === 0
+    ? '<p class="empty-note">Chưa có dữ liệu trong kỳ này.</p>'
+    : top.map((it, i) => `
+      <div class="top-item-row">
+        <div class="top-rank">${i + 1}</div>
+        <div class="top-info">
+          <strong>${esc(it.name)}</strong>
+          <small>${it.qty} ly · ${money(it.revenue)}</small>
+          <div class="mini-progress"><i style="width:${Math.round(it.qty / topMax * 100)}%"></i></div>
+        </div>
+      </div>
+    `).join('');
+  const topMeta = document.getElementById('topMeta');
+  if (topMeta) topMeta.textContent = label;
+
+  document.getElementById('bookingStats').innerHTML = `
+    <div class="mini-row"><span>🟢 Đang hoạt động</span><strong>${summary.confirmed}</strong></div>
+    <div class="mini-row"><span>🟡 Đang giữ</span><strong>${summary.held}</strong></div>
+    <div class="mini-row"><span>🪑 Đang ngồi</span><strong>${summary.seated}</strong></div>
+    <div class="mini-row"><span>⚠️ Không đến</span><strong>${summary.no_show}</strong></div>
+    <div class="mini-row"><span>🚶 Khách vãng lai</span><strong>${summary.walkIn}</strong></div>
+    <div class="stats-divider"></div>
+    <div class="split-row">
+      <div class="split-head"><span>Tỷ lệ lấp bàn</span><strong>${summary.occupancy}%</strong></div>
+      <div class="split-bar occupancy"><i style="width:${summary.occupancy}%"></i></div>
+    </div>
+    <div class="mini-row"><span>💳 Cọc đã thu (tổng)</span><strong>${money(summary.depositCollected)}</strong></div>
+    <div class="mini-row"><span>⏳ Cọc chờ thu</span><strong>${money(summary.depositPending)}</strong></div>
+  `;
+
+  try {
+    if (typeof ReportEngine !== 'undefined') renderReport(ReportEngine.build(statsRange));
+  } catch (e) { console.warn('[stats] report:', e); }
+}
+
+/* ---------- BÁO CÁO CUỐI KỲ + GỢI Ý ---------- */
+function renderReport(r) {
+  if (!r) return;
+  const deltaCls = r.deltaPct > 0 ? 'up' : r.deltaPct < 0 ? 'down' : 'flat';
+  const deltaTxt = r.deltaPct > 0 ? '▲ ' + r.deltaPct + '%' : r.deltaPct < 0 ? '▼ ' + Math.abs(r.deltaPct) + '%' : '— 0%';
+  const headline = document.getElementById('reportHeadline');
+  if (headline) {
+    headline.innerHTML = `
+      <div class="report-main">
+        <div class="report-period">${esc(r.label)} · ${fmtDate(r.from)} – ${fmtDate(r.to)}</div>
+        <div class="report-revenue">${money(r.revenue)}</div>
+        <div class="report-delta ${deltaCls}">${deltaTxt} so với kỳ trước</div>
+      </div>
+      <div class="report-metrics">
+        <div><span>Đơn hoàn tất</span><strong>${r.completed}/${r.orders}</strong></div>
+        <div><span>AOV</span><strong>${money(r.aov)}</strong></div>
+        <div><span>Booking hoạt động</span><strong>${r.bookings.active}</strong></div>
+        <div><span>Lấp bàn</span><strong>${r.occupancy}%</strong></div>
+      </div>`;
+  }
+  const box = document.getElementById('reportInsights');
+  if (box) {
+    box.innerHTML = r.insights.length
+      ? r.insights.map(x => `
+        <div class="insight-card ${x.tone || 'info'}">
+          <div class="insight-icon">${x.icon}</div>
+          <div><strong>${esc(x.title)}</strong><p>${esc(x.text)}</p></div>
+        </div>`).join('')
+      : '<p class="empty-note">Chưa đủ dữ liệu để gợi ý. Hãy nạp dữ liệu mẫu hoặc tạo thêm đơn/booking.</p>';
+  }
+  const note = document.getElementById('reportNote');
+  if (note) {
+    const cfg = (typeof ReportEngine !== 'undefined') ? ReportEngine.emailConfig() : {};
+    note.textContent = cfg.method === 'emailjs'
+      ? 'Gửi bằng EmailJS tới email đã cấu hình. Nếu lỗi, dùng nút HTML/CSV để tải báo cáo.'
+      : 'Báo cáo dùng dữ liệu demo trên trình duyệt. Nút “Gửi email” mở ứng dụng mail với nội dung soạn sẵn; cấu hình EmailJS nếu muốn gửi trực tiếp. Không tự gửi khi tab đã đóng.';
+  }
+}
+
+function openEmailSettings() {
+  const cfg = (typeof ReportEngine !== 'undefined') ? ReportEngine.emailConfig() : {};
+  document.getElementById('emRecipient').value = cfg.recipient || '';
+  document.getElementById('emMethod').value = cfg.method || 'mailto';
+  document.getElementById('emService').value = cfg.serviceId || '';
+  document.getElementById('emTemplate').value = cfg.templateId || '';
+  document.getElementById('emPublic').value = cfg.publicKey || '';
+  toggleEmailJsFields();
+  openModal('emailSettingsModal');
+}
+function toggleEmailJsFields() {
+  const fields = document.getElementById('emailJsFields');
+  if (fields) fields.hidden = document.getElementById('emMethod').value !== 'emailjs';
+}
+function saveEmailSettings(e) {
+  e.preventDefault();
+  const method = document.getElementById('emMethod').value;
+  const cfg = {
+    recipient: document.getElementById('emRecipient').value,
+    method,
+    serviceId: document.getElementById('emService').value,
+    templateId: document.getElementById('emTemplate').value,
+    publicKey: document.getElementById('emPublic').value
+  };
+  if (method === 'emailjs' && (!cfg.serviceId || !cfg.templateId || !cfg.publicKey)) {
+    showToast('⚠ EmailJS cần Service ID, Template ID và Public Key', '#c62828');
+    return false;
+  }
+  ReportEngine.saveEmailConfig(cfg);
+  closeModal('emailSettingsModal');
+  showToast('✓ Đã lưu cấu hình email');
+  renderStatsPage();
+  return false;
+}
+function currentReport() {
+  return (typeof ReportEngine !== 'undefined') ? ReportEngine.build(statsRange) : null;
+}
+async function sendReportEmail() {
+  const r = currentReport();
+  if (!r) { showToast('⚠ Chưa có dữ liệu báo cáo', '#c62828'); return; }
+  const cfg = ReportEngine.emailConfig();
+  if (cfg.method === 'emailjs') {
+    try {
+      showToast('Đang gửi email…');
+      await ReportEngine.sendEmailJS(r, cfg);
+      showToast('✓ Đã gửi email báo cáo');
+    } catch (e) {
+      showToast('⚠ ' + (e.message || 'Không gửi được email'), '#c62828');
+    }
+    return;
+  }
+  const url = ReportEngine.mailtoUrl(r, cfg.recipient || '');
+  try {
+    window.location.href = url;
+    showToast('📧 Đã mở ứng dụng mail với báo cáo');
+  } catch (e) {
+    showToast('⚠ Không mở được ứng dụng mail — dùng nút HTML/CSV', '#c62828');
+  }
+}
+function copyReport() {
+  const r = currentReport();
+  if (!r) return;
+  const text = ReportEngine.toText(r);
+  const done = () => showToast('✓ Đã copy báo cáo');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove(); done();
+  } catch (e) { showToast('⚠ Không copy được', '#c62828'); }
+}
+function downloadReportHtml() {
+  const r = currentReport(); if (!r) return;
+  ReportEngine.download(`cappan-bao-cao-${statsRange}.html`, ReportEngine.toHtml(r), 'text/html;charset=utf-8');
+  showToast('✓ Đã tải báo cáo HTML');
+}
+function downloadReportCsv() {
+  const r = currentReport(); if (!r) return;
+  ReportEngine.download(`cappan-bao-cao-${statsRange}.csv`, ReportEngine.toCsv(r), 'text/csv;charset=utf-8');
+  showToast('✓ Đã tải báo cáo CSV');
+}
+</script>
+
+</body>
+</html>

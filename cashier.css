@@ -1,0 +1,111 @@
+/* ============================================================
+   THU NGÂN — bố cục 2 cột, dùng biến theme chung
+============================================================ */
+.cashier-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .cashier-layout { grid-template-columns: 1fr; }
+}
+
+.cashier-menu, .cashier-bill { padding: 16px; }
+.pos-hint { font-size: 0.8rem; color: var(--gray); }
+
+.pos-toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.pos-toolbar input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-light);
+  border-radius: var(--radius-sm);
+  background: var(--light);
+  color: var(--dark-brown);
+}
+.pos-toolbar .staff-tabs { flex-wrap: wrap; gap: 6px; }
+
+.pos-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  max-height: 58vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+.pos-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--gray-light);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--dark-brown);
+  text-align: left;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.pos-item:hover { transform: translateY(-2px); border-color: var(--gold); }
+.pos-item img { width: 100%; height: 78px; object-fit: cover; border-radius: 6px; }
+.pos-item-name { font-weight: 600; font-size: 0.88rem; line-height: 1.25; }
+.pos-item-price { color: var(--gold); font-weight: 700; font-size: 0.85rem; }
+
+.pos-bill-lines { max-height: 34vh; overflow: auto; margin-bottom: 10px; }
+.pos-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--gray-light);
+}
+.pos-line-name { flex: 1; min-width: 0; }
+.pos-line-name strong { display: block; font-size: 0.88rem; }
+.pos-line-name small { color: var(--gray); font-size: 0.75rem; }
+.pos-qty { display: flex; align-items: center; gap: 4px; }
+.pos-qty button {
+  width: 26px; height: 26px;
+  border: 1px solid var(--gray-light);
+  border-radius: 6px;
+  background: var(--light);
+  color: var(--dark-brown);
+  cursor: pointer;
+}
+.pos-line-total { min-width: 76px; text-align: right; font-weight: 600; font-size: 0.85rem; }
+.pos-remove {
+  border: 0; background: transparent; color: var(--red); cursor: pointer; font-size: 0.9rem;
+}
+
+.pos-summary { border-top: 1px solid var(--gray-light); padding-top: 8px; margin-bottom: 10px; }
+.pos-summary-row { display: flex; justify-content: space-between; font-size: 0.88rem; padding: 3px 0; }
+.pos-summary-row.total { font-size: 1.05rem; font-weight: 800; color: var(--gold); border-top: 1px solid var(--gray-light); margin-top: 6px; padding-top: 8px; }
+
+.pos-promo { display: flex; gap: 6px; }
+.pos-promo input {
+  flex: 1; min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--gray-light);
+  border-radius: var(--radius-sm);
+  background: var(--light);
+  color: var(--dark-brown);
+}
+.pos-msg { min-height: 16px; font-size: 0.78rem; margin: 4px 0 8px; }
+.pos-msg.ok { color: var(--green); }
+.pos-msg.err { color: var(--red); }
+
+.pos-pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pos-pay-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--gray); }
+.pos-pay-grid select, .pos-pay-grid input {
+  padding: 9px 10px;
+  border: 1px solid var(--gray-light);
+  border-radius: var(--radius-sm);
+  background: var(--light);
+  color: var(--dark-brown);
+}
+.pos-change { font-size: 0.85rem; color: var(--gold); min-height: 18px; margin: 8px 0; }
+.cashier-bill .btn-block { margin-top: 4px; }
+
+@media (max-width: 560px) {
+  .pos-pay-grid { grid-template-columns: 1fr; }
+  .pos-menu-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+}
