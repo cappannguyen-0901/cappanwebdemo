@@ -331,19 +331,25 @@ function renderSeatMap() {
   el.innerHTML = seats.map(s => {
     const isHeld = s.status === 'held';
     const isBooked = s.status === 'booked' || isHeld;
+    const isOccupied = s.status === 'occupied';
+    const isCleaning = s.status === 'cleaning';
     const isSelected = selectedSeatId === s.id;
     const isMatch = matchesFilter(s, currentFilter);
 
     let cls = 'seat ';
     if (isHeld) cls += 'held ';
     else if (isBooked) cls += 'booked ';
+    else if (isOccupied) cls += 'occupied ';
+    else if (isCleaning) cls += 'cleaning ';
     else cls += 'free ';
     if (isSelected) cls += 'selected ';
     
     // Thêm class dimmed nếu không khớp bộ lọc
     if (!isMatch) cls += 'dimmed ';
 
-    const ariaLabel = `Bàn ${s.id}, sức chứa ${s.capacity} người, ${isHeld ? 'đang được giữ' : (isBooked ? 'đã có người đặt' : 'đang trống')}`;
+    const statusLabel = isHeld ? 'Đang giữ' : isBooked ? 'Đã đặt' : isOccupied ? 'Có khách' : isCleaning ? 'Đang dọn' : 'Trống';
+    const ariaLabel = `Bàn ${s.id}, sức chứa ${s.capacity} người, ${statusLabel}`;
+    const disabled = isHeld || isBooked || isOccupied || isCleaning || !isMatch;
 
     return `
       <button type="button"
@@ -351,11 +357,12 @@ function renderSeatMap() {
               onclick="selectSeat('${s.id}')"
               aria-label="${ariaLabel}"
               aria-pressed="${isSelected}"
-              aria-disabled="${isBooked || !isMatch}"
-              tabindex="${(isBooked || !isMatch) ? '-1' : '0'}"
+              aria-disabled="${disabled}"
+              tabindex="${disabled ? '-1' : '0'}"
               data-seat-id="${s.id}">
         <span class="seat-id">${s.id}</span>
         <span class="seat-capacity">${s.capacity} khách</span>
+        <span class="seat-status">${statusLabel}</span>
       </button>
     `;
   }).join('');

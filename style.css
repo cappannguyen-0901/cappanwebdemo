@@ -1411,6 +1411,14 @@ body[data-page="booking"] .seat-area .seat {
 
 .seat-id { font-size: 1.5rem; font-weight: 900; line-height: 1; }
 .seat-capacity { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+.seat-status {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-top: 3px;
+}
 
 /* TRẠNG THÁI BÀN */
 body[data-page="booking"] .seat-area .seat.free {
@@ -1488,6 +1496,16 @@ body[data-page="booking"] .seat-area .seat.dimmed {
   background: #1C1111;
   border-color: #5C1D22;
   color: #E57373;
+}
+[data-theme="dark"] body[data-page="booking"] .seat-area .seat.occupied {
+  background: #2B2112;
+  border-color: #B45309;
+  color: #FBBF24;
+}
+[data-theme="dark"] body[data-page="booking"] .seat-area .seat.cleaning {
+  background: #1E2427;
+  border-color: #546E7A;
+  color: #B0BEC5;
 }
 [data-theme="dark"] body[data-page="booking"] .seat-area .seat.selected {
   background: linear-gradient(145deg, #FFF4B8 0%, #E8B931 50%, #B88A1E 100%) !important;
