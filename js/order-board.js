@@ -51,6 +51,31 @@
       const el = $(id);
       if (el) el.innerHTML = list.length ? list.map(card).join('') : '<div class="ob-empty">Trống.</div>';
     });
+    renderCleaning();
+  }
+
+  function renderCleaning() {
+    const box = $('obCleaning');
+    const listEl = $('obCleaningList');
+    if (!box || !listEl) return;
+    let seats = [];
+    try { seats = API.seats.getAll().filter(s => s.status === 'cleaning'); } catch (e) {}
+    if (!seats.length) { box.style.display = 'none'; listEl.innerHTML = ''; return; }
+    box.style.display = 'block';
+    listEl.innerHTML = seats.map(s =>
+      `<button type="button" onclick="OrderBoard.clean('${esc(s.id)}')" style="margin:2px;border:1px solid #d9c8b5;border-radius:6px;background:#fffdf9;padding:3px 7px;cursor:pointer;">Bàn ${esc(s.id)} · Đã dọn</button>`
+    ).join('');
+  }
+
+  function clean(id) {
+    API.seats.setStatus(id, 'available');
+    render();
+    toast('✓ Bàn ' + id + ' đã sẵn sàng');
+  }
+
+  function setQuickZone(status) {
+    API.quickZone.set(status);
+    toast('Khu tự do: ' + API.quickZone.label(status));
   }
 
   function status(id, next) {
@@ -86,12 +111,14 @@
   function init() {
     if (typeof Auth === 'undefined' || !Auth.requireStaff()) return;
     if (typeof renderStaffNav === 'function') renderStaffNav('order-board');
+    const qz = $('quickZone');
+    if (qz) qz.value = API.quickZone.get();
     render();
     timer = setInterval(render, 2500);
     window.addEventListener('cappan:sync', render);
   }
 
-  window.OrderBoard = { status, cancel, loadDemo, render };
+  window.OrderBoard = { status, cancel, loadDemo, render, clean, setQuickZone };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();

@@ -36,9 +36,11 @@
     const low = API.ingredients.getLowStock();
     const out = API.ingredients.getOutOfStock();
     const kds = API.orders.getKdsQueue();
+    const cleaning = API.seats.getAll().filter(s => s.status === 'cleaning');
+    const quickZone = API.quickZone ? API.quickZone.get() : 'many';
     let top = null;
     try { top = API.stats.topItems(1)[0] || null; } catch (e) {}
-    return { today, orders, activeTables, held, low, out, kds, top };
+    return { today, orders, activeTables, held, low, out, kds, top, cleaning, quickZone };
   }
 
   function kpis() {
@@ -75,7 +77,17 @@
     const old = s.kds.filter(o => (o.ageMinutes || 0) >= 15).slice(0, 2);
     old.forEach(o => rows.push({
       level: 'yellow', title: `Đơn ${o.kitchenCode || o.id} chờ lâu`,
-      body: `${o.ageMinutes} phút · ${(o.items || []).map(i => i.name).join(', ')}. Kiểm tra KDS.`,
+      body: `${o.ageMinutes} phút · ${(o.items || []).map(i => i.name).join(', ')}. Kiểm tra Order Board.`,
+      action: 'ack'
+    }));
+    if (s.quickZone === 'full') rows.push({
+      level: 'yellow', title: 'Khu Counter Pickup đã hết chỗ',
+      body: 'Khách mua nước tại quầy có thể phải chờ hoặc mang đi. Cân nhắc mở thêm khu tự do.',
+      action: 'ack'
+    });
+    s.cleaning.slice(0, 2).forEach(seat => rows.push({
+      level: 'yellow', title: `Bàn ${seat.id} đang dọn`,
+      body: 'Bàn chưa sẵn sàng cho khách mới. Nhân viên bấm “Đã dọn” trên Order Board.',
       action: 'ack'
     }));
     if (!rows.length) rows.push({ level: 'green', title: 'Không có bất thường', body: 'Doanh thu, bàn, bếp và kho đang trong ngưỡng.', action: 'ack' });

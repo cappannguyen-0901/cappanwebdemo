@@ -118,6 +118,9 @@ Hoặc `npm run check`. Hiện tại:
 - **Kịch bản**: 8 nhóm test phủ **45 câu khách + 25 câu nhân viên** và quy trình API (xem `docs/BO-KIEM-THU.md`).
 - **Kịch bản báo cáo cho giảng viên**: `docs/KICH-BAN-BAO-CAO.md`.
 - **Báo cáo sản phẩm**: `docs/TONG-KET-SAN-PHAM.md`.
+- **Báo cáo vận hành mới**: [`docs/BAO-CAO-VAN-HANH-CAPPAN.md`](docs/BAO-CAO-VAN-HANH-CAPPAN.md) · [`CAPPAN-BAO-CAO-VAN-HANH.docx`](CAPPAN-BAO-CAO-VAN-HANH.docx).
+- **Kịch bản thuyết trình + demo**: [`docs/THUYET-TRINH-CAPPAN.md`](docs/THUYET-TRINH-CAPPAN.md).
+- **Slide mới**: `cappan-slides-v2.pptx`.
 - **Tổng**: **130 test**; smoke **24 trang** trên Chrome headless.
 
 ---

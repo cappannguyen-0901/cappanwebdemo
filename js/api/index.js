@@ -880,6 +880,24 @@ const API = {
   },
 
   /* ---------- SEATS ---------- */
+  /* ---------- QUICK ZONE (Counter Pickup) ---------- */
+  quickZone: {
+    KEY: 'cappan_quick_zone_v1',
+    LABEL: { many: 'Còn nhiều chỗ', low: 'Sắp hết chỗ', full: 'Hết chỗ' },
+    get() {
+      try {
+        const v = localStorage.getItem(this.KEY);
+        return ['many', 'low', 'full'].includes(v) ? v : 'many';
+      } catch (e) { return 'many'; }
+    },
+    set(status) {
+      if (!['many', 'low', 'full'].includes(status)) return this.get();
+      storeSet(this.KEY, status);
+      return status;
+    },
+    label(status) { return this.LABEL[status || this.get()] || this.LABEL.many; }
+  },
+
   seats: {
     _getStateMap() {
       try {
@@ -1355,6 +1373,11 @@ const API = {
 
       API.seats.release(list[i].seatId);
       API.seats.syncFromBookings();
+      try {
+        const active = API.tableSessions.getOpenByTable(list[i].seatId);
+        if (active) API.tableSessions.settle(active.id);
+        else API.seats.setStatus(list[i].seatId, 'cleaning');
+      } catch (e) {}
       _audit({ action: 'booking.complete', targetId: id, ok: true });
 
       return list[i];
@@ -1397,6 +1420,8 @@ const API = {
       if (!storeSet(STORAGE_KEYS.bookings, JSON.stringify(list))) return null;
 
       API.seats.syncFromBookings();
+      try { API.seats.setStatus(list[i].seatId, 'occupied'); } catch (e) {}
+      try { API.tableSessions.open(list[i].seatId); } catch (e) {}
       _audit({ action: 'booking.check_in', targetId: id, ok: true });
       return list[i];
     },
@@ -1443,6 +1468,8 @@ const API = {
 
       API.seats.book(seat.id);
       API.seats.syncFromBookings();
+      try { API.seats.setStatus(seat.id, 'occupied'); } catch (e) {}
+      try { API.tableSessions.open(seat.id); } catch (e) {}
       _audit({ action: 'booking.walk_in', targetId: bk.id, ok: true });
       return bk;
     },

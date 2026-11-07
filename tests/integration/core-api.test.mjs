@@ -383,11 +383,11 @@ test('checkIn: chỉ nhân viên, bàn vẫn bị chiếm, hoàn tất mới nh�
   const checked = API.bookings.checkIn(bk.id);
   assert.ok(checked);
   assert.equal(checked.status, 'seated');
-  assert.equal(API.seats.getById(seat.id).status, 'booked', 'bàn vẫn phải bị chiếm khi khách đang ngồi');
+  assert.equal(API.seats.getById(seat.id).status, 'occupied', 'bàn phải bị chiếm khi khách đang ngồi');
 
   const done = API.bookings.complete(bk.id);
   assert.equal(done.status, 'completed');
-  assert.equal(API.seats.getById(seat.id).status, 'available');
+  assert.equal(API.seats.getById(seat.id).status, 'cleaning');
 });
 
 test('Khách vãng lai: nhân viên xếp bàn ngay, không cần tài khoản', () => {
@@ -409,7 +409,7 @@ test('Khách vãng lai: nhân viên xếp bàn ngay, không cần tài khoản',
   assert.equal(wk.status, 'seated');
   assert.equal(wk.walkIn, true);
   assert.equal(wk.customerName, 'Khách đi đường');
-  assert.equal(API.seats.getById(seat.id).status, 'booked');
+  assert.equal(API.seats.getById(seat.id).status, 'occupied');
 
   // Bàn đã bị chiếm thì không xếp thêm
   const dup = API.bookings.createWalkIn({ seatId: seat.id, guests: 1 });
@@ -518,7 +518,7 @@ test('Trạng thái đang giữ: bàn chuyển held → booked khi nhận bàn',
   const checked = API.bookings.checkIn(bk.id);
   assert.equal(checked.status, 'seated');
   assert.equal(checked.held, false);
-  assert.equal(API.seats.getById(seat.id).status, 'booked');
+  assert.equal(API.seats.getById(seat.id).status, 'occupied');
 
   // Không thể giữ lại bàn đã check-in
   assert.equal(API.bookings.setHeld(bk.id, true), null);
