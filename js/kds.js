@@ -20,7 +20,12 @@
   let pending = null;
   let lastAction = null;
   let voices = [];
+  let selectedVoiceName = '';
+  let ttsAudio = null;
   let renderTimer = null;
+
+  const VOICE_KEY = 'cappan_kds_voice_v1';
+  const GOOGLE_VOICE = '__google_vi__';
 
   const SERVICE_LABEL = { delivery: 'Giao hàng', takeaway: 'Mang đi', dine_in: 'Tại bàn' };
   const STATUS_LABEL = { submitted: 'Chờ làm', preparing: 'Đang pha', ready: 'Sẵn sàng', served: 'Đã phục vụ' };
@@ -58,31 +63,140 @@
 
   function loadVoices() {
     if (!('speechSynthesis' in window)) return;
-    voices = window.speechSynthesis.getVoices() || [];
+    const all = window.speechSynthesis.getVoices() || [];
+    voices = all.slice().sort((a, b) => {
+      const av = /^vi/i.test(a.lang) ? 0 : 1;
+      const bv = /^vi/i.test(b.lang) ? 0 : 1;
+      if (av !== bv) return av - bv;
+      return String(a.name).localeCompare(String(b.name));
+    });
+    populateVoiceSelect();
+  }
+
+  function viVoices() {
+    return voices.filter(v => /^vi([-_]|$)/i.test(v.lang) || /vietnam|tiếng việt/i.test(v.name));
   }
 
   function pickVoice() {
     if (!voices.length) loadVoices();
-    return voices.find(v => /vi[-_]VN/i.test(v.lang)) ||
-      voices.find(v => /^vi/i.test(v.lang)) ||
-      null;
+    if (selectedVoiceName === GOOGLE_VOICE) return null;
+    if (selectedVoiceName && selectedVoiceName !== GOOGLE_VOICE) {
+      const chosen = voices.find(v => v.name === selectedVoiceName);
+      if (chosen && /^vi([-_]|$)/i.test(chosen.lang)) return chosen;
+    }
+    return viVoices()[0] || null;
+  }
+
+  function useGoogleVoice() {
+    return selectedVoiceName === GOOGLE_VOICE || (!viVoices().length && selectedVoiceName !== '');
+  }
+
+  function populateVoiceSelect() {
+    const sel = $('kdsVoice');
+    if (!sel) return;
+    const vlist = viVoices();
+    const hasVi = vlist.length > 0;
+    const current = selectedVoiceName || (hasVi ? vlist[0].name : GOOGLE_VOICE);
+    const opts = [];
+    opts.push(`<option value="${GOOGLE_VOICE}" ${current === GOOGLE_VOICE ? 'selected' : ''}>Tiếng Việt — Google TTS (online)</option>`);
+    if (vlist.length) {
+      opts.push(...vlist.map(v =>
+        `<option value="${esc(v.name)}" ${v.name === current ? 'selected' : ''}>${esc(v.name)} · ${esc(v.lang)}${v.localService ? ' · offline' : ''}</option>`
+      ));
+    }
+    sel.innerHTML = opts.join('');
+    selectedVoiceName = current;
+  }
+
+  function voiceStatus() {
+    const v = pickVoice();
+    if (v) return 'Giọng: ' + v.name + ' (' + v.lang + ')' + (v.localService ? ' · offline' : ' · online');
+    if (useGoogleVoice() || !viVoices().length) return 'Giọng: Google TTS tiếng Việt (online, dự phòng)';
+    return 'Chưa có giọng tiếng Việt. Chọn Google TTS hoặc cài Vietnamese voice trong Windows.';
+  }
+
+  function stopSpeech() {
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+    try { if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; } } catch (e) {}
+  }
+
+  function googleChunks(text) {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    const parts = clean.split(/(?<=[.!?])\s+/);
+    const out = [];
+    for (const p of parts) {
+      if (p.length <= 180) { if (p) out.push(p); continue; }
+      let rest = p;
+      while (rest.length > 180) {
+        let cut = rest.lastIndexOf(' ', 180);
+        if (cut < 60) cut = 180;
+        out.push(rest.slice(0, cut));
+        rest = rest.slice(cut).trim();
+      }
+      if (rest) out.push(rest);
+    }
+    return out.slice(0, 6);
+  }
+
+  function speakGoogle(text, force) {
+    if (mode === 'screen' && !force) return;
+    const chunks = googleChunks(text);
+    if (!chunks.length) return;
+    stopSpeech();
+    let i = 0;
+    const playNext = () => {
+      if (i >= chunks.length) return;
+      const q = encodeURIComponent(chunks[i++]);
+      const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + q;
+      ttsAudio = new Audio(url);
+      ttsAudio.onended = playNext;
+      ttsAudio.onerror = () => {
+        setStatusLine('Không phát được Google TTS (mạng?). Nội dung đã hiện trên màn hình.');
+        ttsAudio = null;
+      };
+      const p = ttsAudio.play();
+      if (p && p.catch) p.catch(() => {
+        setStatusLine('Trình duyệt chặn autoplay. Bấm “Test” hoặc “Đọc đơn tiếp theo” một lần.');
+      });
+    };
+    playNext();
   }
 
   function speak(text, force) {
     if (!text) return;
     log('ai', text);
     if (mode === 'screen' && !force) return;
-    if (!('speechSynthesis' in window)) return;
+    const v = pickVoice();
+    if (!v && useGoogleVoice()) {
+      speakGoogle(text, force);
+      setStatusLine(voiceStatus());
+      return;
+    }
+    if (!('speechSynthesis' in window)) {
+      setStatusLine('Trình duyệt không hỗ trợ TTS. Nội dung đã hiện trên màn hình.');
+      return;
+    }
+    if (!v) {
+      setStatusLine('Chưa có giọng tiếng Việt — chọn Google TTS ở dropdown hoặc cài Vietnamese voice.');
+      return;
+    }
     try {
-      window.speechSynthesis.cancel();
+      stopSpeech();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'vi-VN';
+      u.lang = v.lang || 'vi-VN';
       u.rate = 1.02;
       u.pitch = 1;
-      const v = pickVoice();
-      if (v) u.voice = v;
+      u.voice = v;
       window.speechSynthesis.speak(u);
+      setStatusLine(voiceStatus());
     } catch (e) {}
+  }
+
+  function setVoice(name) {
+    selectedVoiceName = name || '';
+    try { localStorage.setItem(VOICE_KEY, selectedVoiceName); } catch (e) {}
+    setStatusLine(voiceStatus());
+    speak('Xin chào, tôi là trợ lý bếp CAPPAN. Giọng tiếng Việt đã sẵn sàng.', true);
   }
 
   function itemText(o) {
@@ -429,18 +543,27 @@
   function init() {
     if (typeof Auth === 'undefined' || !Auth.requireStaff()) return;
     if (typeof renderStaffNav === 'function') renderStaffNav('kds');
+    try { selectedVoiceName = localStorage.getItem(VOICE_KEY) || ''; } catch (e) {}
     loadVoices();
-    if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = loadVoices;
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        loadVoices();
+        setStatusLine(voiceStatus());
+      };
+    }
     setMode('both');
+    setStatusLine(voiceStatus());
     render();
     setInterval(render, 2500);
     window.addEventListener('cappan:sync', scheduleRender);
     window.addEventListener('cappan:automation', scheduleRender);
     log('sys', 'KDS sẵn sàng. Bấm “Bật mic” hoặc dùng nút trên thẻ.');
+    log('sys', voiceStatus());
   }
 
   window.KDS = {
-    setMode, toggleMic, announceNext, setStatus, cancel, loadDemoOrders, undoLast, handleCommand, render
+    setMode, toggleMic, announceNext, setStatus, cancel, loadDemoOrders, undoLast, handleCommand, render,
+    setVoice, testVoice: () => speak('Xin chào, đây là giọng tiếng Việt của trợ lý bếp CAPPAN.', true)
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

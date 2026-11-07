@@ -107,10 +107,11 @@ Mở `staff-kds.html?as=0900000002`.
   - “Xong A12”
   - “Hết sữa” → AI đọc danh sách món bị khóa, hỏi xác nhận.
 - Chỉ vào 3 chế độ: Voice Only / Voice + Screen / Screen Only.
+- Nếu AI đọc sai giọng: mở dropdown **Giọng**, chọn giọng `vi-VN` (Microsoft HoaiMy/NamMinh hoặc Google Tiếng Việt), bấm **Test**.
 
 Nói:
 
-> “Voice dùng Web Speech API. Push-to-talk, whitelist, 2-step confirm, undo. Nếu mic lỗi, vẫn bấm nút — demo không bị chặn.”
+> “Voice dùng Web Speech API. Push-to-talk, whitelist, 2-step confirm, undo. Nếu mic lỗi, vẫn bấm nút — demo không bị chặn. Nếu máy chưa có giọng tiếng Việt, em chọn trong dropdown hoặc cài Vietnamese voice trong Windows.”
 
 ### Act 3 — Chủ quán (2 phút)
 
