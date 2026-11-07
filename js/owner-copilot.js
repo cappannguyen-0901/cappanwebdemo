@@ -248,6 +248,42 @@
     input.value = '';
   }
 
+  function emailReport() {
+    const s = snapshot();
+    const lines = [];
+    lines.push('CAPPAN — BÁO CÁO CUỐI NGÀY');
+    lines.push('Ngày: ' + new Date().toLocaleDateString('vi-VN'));
+    lines.push('');
+    lines.push('DOANH THU');
+    lines.push('- Doanh thu: ' + money(s.today.total));
+    lines.push('- Đơn hoàn tất: ' + s.today.completedCount + '/' + s.today.count);
+    lines.push('');
+    lines.push('VẬN HÀNH');
+    lines.push('- Bàn đang mở: ' + s.activeTables.length);
+    lines.push('- Đơn trong Order Board: ' + s.kds.length);
+    lines.push('- Bàn đang dọn: ' + s.cleaning.length);
+    lines.push('- Khu tự do: ' + (API.quickZone ? API.quickZone.label(s.quickZone) : '—'));
+    lines.push('');
+    lines.push('CẢNH BÁO KHO');
+    lines.push('- Sắp cạn: ' + (s.low.length ? s.low.map(x => x.name).join(', ') : 'Không'));
+    lines.push('- Đã hết: ' + (s.out.length ? s.out.map(x => x.name).join(', ') : 'Không'));
+    lines.push('');
+    lines.push('3 VIỆC CẦN QUYẾT');
+    lines.push('1. ' + (s.out[0] || s.low[0] ? 'Nhập thêm ' + (s.out[0] || s.low[0]).name : 'Không có cảnh báo kho'));
+    lines.push('2. ' + (s.cleaning.length ? 'Dọn bàn ' + s.cleaning.map(x => x.id).join(', ') : 'Không có bàn đang dọn'));
+    lines.push('3. ' + (s.kds.length ? 'Kiểm tra ' + s.kds.length + ' đơn trên Order Board' : 'Order Board trống'));
+    const body = lines.join('\n');
+    const subject = 'CAPPAN — Báo cáo cuối ngày ' + new Date().toLocaleDateString('vi-VN');
+    const url = 'mailto:owner@cappan.vn?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    try {
+      window.location.href = url;
+      toast('📧 Đã mở báo cáo email (demo)');
+    } catch (e) {
+      toast('Không mở được email — nội dung đã sẵn sàng.');
+    }
+    return body;
+  }
+
   function init() {
     if (typeof Auth === 'undefined' || !Auth.requireStaff()) return;
     if (typeof renderStaffNav === 'function') renderStaffNav('owner');
@@ -258,7 +294,7 @@
     setInterval(render, 5000);
   }
 
-  window.OwnerCopilot = { ask, approve, reject, resolve, render };
+  window.OwnerCopilot = { ask, approve, reject, resolve, render, emailReport };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
