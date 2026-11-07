@@ -104,7 +104,7 @@ Mở `staff-kds.html?as=0900000002`.
 - Mic tự bật khi vào trang. Bấm **“Đọc đơn tiếp theo”** — AI TTS đọc kèm số bàn.
 - Bấm **Bắt đầu** / **Xong** trên thẻ — hoặc nói:
   - “Đơn tiếp theo”
-  - “Xong A12” → AI đọc “A12, bàn A1”
+  - “Xong 12” → AI đọc “số 12, bàn A1”
   - “Hết sữa” → AI đọc danh sách món bị khóa, hỏi xác nhận.
 - Chỉ vào 3 chế độ: Voice Only / Voice + Screen / Screen Only.
 - Nếu AI đọc sai giọng: mở dropdown **Giọng**, chọn giọng `vi-VN` (Microsoft HoaiMy/NamMinh hoặc Google Tiếng Việt), bấm **Test**.

@@ -50,6 +50,19 @@
       .trim();
   }
 
+  /* Chuyển số nói thành số viết cho mã đơn: "mười hai" -> 12, "hai mươi" -> 20. */
+  function normalizeNumbers(s) {
+    const map = { khong: 0, mot: 1, hai: 2, ba: 3, bon: 4, nam: 5, sau: 6, bay: 7, tam: 8, chin: 9 };
+    let t = normalize(s);
+    t = t.replace(/\bmuoi\s+(khong|mot|hai|ba|bon|nam|sau|bay|tam|chin)\b/g,
+      (_, d) => String(10 + map[d]));
+    t = t.replace(/\b(khong|mot|hai|ba|bon|nam|sau|bay|tam|chin)\s+muoi\s+(khong|mot|hai|ba|bon|nam|sau|bay|tam|chin)\b/g,
+      (_, a, b) => String(map[a] * 10 + map[b]));
+    t = t.replace(/\b(khong|mot|hai|ba|bon|nam|sau|bay|tam|chin)\s+muoi\b/g,
+      (_, a) => String(map[a] * 10));
+    return t;
+  }
+
   function log(role, text) {
     const box = $('kdsTranscript');
     if (!box) return;
@@ -241,8 +254,13 @@
     return o.kitchenCode || ('#' + String(o.id || '').slice(-4).toUpperCase());
   }
 
+  function voiceCode(o) {
+    const d = String(orderLabel(o)).replace(/\D/g, '');
+    return d ? 'số ' + d : orderLabel(o);
+  }
+
   function describe(o) {
-    const code = orderLabel(o);
+    const code = voiceCode(o);
     if (o.serviceType === 'delivery') return `${code}, giao hàng: ${itemText(o)}.`;
     if (o.serviceType === 'takeaway') return `${code}, mang đi: ${itemText(o)}.`;
     const table = o.tableId ? `bàn ${o.tableId}` : 'chưa gán bàn';
@@ -402,23 +420,35 @@
 
   function findQueueOrder(code, table) {
     const queue = API.orders.getKdsQueue();
+    const digits = String(code || '').replace(/\D/g, '');
+    const tableDigits = String(table || '').replace(/\D/g, '');
     if (table) {
-      const byTable = queue.find(o => String(o.tableId || '').toUpperCase() === table);
+      const byTable = queue.find(o => String(o.tableId || '').toUpperCase() === table) ||
+        queue.find(o => tableDigits && String(o.tableId || '').replace(/\D/g, '') === tableDigits);
       if (byTable) return byTable;
     }
     if (!code) return queue[0] || null;
     return queue.find(o => String(o.kitchenCode || '').toUpperCase() === code) ||
+      queue.find(o => digits && String(o.kitchenCode || '').replace(/\D/g, '') === digits) ||
       queue.find(o => String(o.id || '').toUpperCase().endsWith(code)) || null;
   }
 
   function extractCode(text) {
-    const m = String(text || '').toUpperCase().match(/\bA\s?(\d{1,3})\b/);
-    return m ? 'A' + m[1] : null;
+    const t = String(text || '').toUpperCase();
+    const a = t.match(/\bA\s?(\d{1,3})\b/);
+    if (a) return 'A' + a[1];
+    // Cho phép nói số không cần chữ A: "xong 12", "xong 01".
+    const nums = t.match(/\b\d{1,3}\b/g);
+    if (nums && nums.length) return 'A' + nums[0];
+    return null;
   }
 
   function extractTable(text) {
-    const m = normalize(text).match(/\bban\s+([a-z]\s?\d{1,2})\b/);
-    return m ? m[1].replace(/\s+/g, '').toUpperCase() : null;
+    const t = normalize(text);
+    let m = t.match(/\bban\s+([a-z]\s?\d{1,2})\b/);
+    if (m) return m[1].replace(/\s+/g, '').toUpperCase();
+    m = t.match(/\bban\s+(\d{1,2})\b/);
+    return m ? m[1] : null;
   }
 
   function executePending() {
@@ -432,7 +462,7 @@
       const o = API.orders.getById(p.orderId);
       if (!o) { speak('Không tìm thấy đơn.'); return; }
       if (API.orders.cancel(p.orderId)) {
-        speak(`Đã hủy ${orderLabel(o)}${o.tableId ? ', bàn ' + o.tableId : ''}.`);
+        speak(`Đã hủy ${voiceCode(o)}${o.tableId ? ', bàn ' + o.tableId : ''}.`);
         lastAction = null;
         render();
       } else {
@@ -458,7 +488,7 @@
   }
 
   function handleCommand(raw) {
-    let text = normalize(raw);
+    let text = normalizeNumbers(raw);
     if (!text) return;
     text = text.replace(/^(u|uh|o|day|nhe|vay|thi)\s+/, '');
 
@@ -538,7 +568,7 @@
       const o = findQueueOrder(code, table);
       if (!o) { speak('Không tìm thấy đơn để hủy.'); return; }
       pending = { type: 'cancel', orderId: o.id };
-      speak(`Đơn ${orderLabel(o)}${o.tableId ? ', bàn ' + o.tableId : ''}, ${itemText(o)}. Xác nhận hủy?`);
+      speak(`Đơn ${voiceCode(o)}${o.tableId ? ', bàn ' + o.tableId : ''}, ${itemText(o)}. Xác nhận hủy?`);
       return;
     }
 
@@ -554,7 +584,7 @@
     lastAction = { type: 'status', orderId: id, prev };
     const label = STATUS_LABEL[status] || status;
     const where = o.tableId ? `, bàn ${o.tableId}` : '';
-    speak(`Đã ${label.toLowerCase()} ${orderLabel(o)}${where}.`);
+    speak(`Đã ${label.toLowerCase()} ${voiceCode(o)}${where}.`);
     render();
   }
 
