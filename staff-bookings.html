@@ -491,7 +491,8 @@ function renderStaffBookingSeats() {
 function updateDepositPreview() {
   const seatId = document.getElementById('sbSeat').value;
   const seat = seatId ? API.seats.getById(seatId) : null;
-  const dep = seat && typeof BookingRules !== 'undefined' ? BookingRules.depositFor(seat) : 0;
+  const guests = parseInt((document.getElementById('sbGuests') || {}).value, 10) || 1;
+  const dep = seat && typeof BookingRules !== 'undefined' ? BookingRules.depositFor(seat, guests) : 0;
   document.getElementById('sbDeposit').value = dep ? money(dep) : '—';
 }
 

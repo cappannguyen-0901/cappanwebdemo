@@ -257,12 +257,22 @@
       return { ok: true };
     },
 
-    /* Cọc giữ bàn: nửa sức chứa × 35.000đ (làm tròn lên), tối thiểu 35.000đ. */
+    /* Cọc = số người × giá ly rẻ nhất (chỉ đồ uống). */
     DEPOSIT_PER_SEAT: 35000,
-    depositFor: function (seat) {
+    depositFor: function (seat, guests) {
       var cap = Number(seat && seat.capacity) || 0;
-      if (cap <= 0) return 0;
-      return Math.ceil(cap / 2) * this.DEPOSIT_PER_SEAT;
+      var n = Number(guests) || Math.ceil(cap / 2) || 1;
+      var cheapest = this.DEPOSIT_PER_SEAT;
+      try {
+        if (typeof API !== 'undefined' && API.menu) {
+          var prices = API.menu.getAll()
+            .filter(function (m) { return ['coffee', 'tea', 'smoothie', 'juice', 'soda'].indexOf(m.categoryId) >= 0; })
+            .map(function (m) { return Number(m.price) || 0; })
+            .filter(function (p) { return p > 0; });
+          if (prices.length) cheapest = Math.min.apply(null, prices);
+        }
+      } catch (e) {}
+      return Math.max(0, n) * cheapest;
     }
   };
 

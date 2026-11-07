@@ -209,7 +209,7 @@ test('Quy trình khách — giỏ hàng, mã giảm giá, đơn, hủy, đặt b
     date: futureDate(3), time: '19:00', guests: 4
   });
   assert.ok(bk && bk.id, API._lastError);
-  assert.equal(bk.deposit, 70000);
+  assert.equal(bk.deposit, 140000);
   assert.ok(API.bookings.cancel(bk.id));
 });
 

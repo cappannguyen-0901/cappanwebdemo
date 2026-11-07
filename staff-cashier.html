@@ -98,6 +98,18 @@ d.classList.add('no-anim');}catch(e){}})();
           <div class="pos-msg" id="posMsg" role="status"></div>
 
           <div class="pos-pay-grid">
+            <label>Hình thức phục vụ
+              <select id="posService" onchange="onPosServiceChange()">
+                <option value="counter_pickup">Counter Pickup — không bàn</option>
+                <option value="table_service">Table Service — tại bàn</option>
+              </select>
+            </label>
+            <label id="posTableRow" style="display:none">Bàn
+              <select id="posTable" onchange="renderBill()"></select>
+            </label>
+          </div>
+
+          <div class="pos-pay-grid">
             <label>Hình thức
               <select id="posMethod" onchange="renderBill()">
                 <option value="cash">Tiền mặt</option>

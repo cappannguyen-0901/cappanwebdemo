@@ -187,7 +187,7 @@ const DemoData = {
     const activeNow = past.filter(b => b && b.status === 'confirmed');
     activeNow.forEach((b, idx) => {
       const seat = API.seats.getById(b.seatId);
-      b.deposit = (typeof BookingRules !== 'undefined') ? BookingRules.depositFor(seat) : 0;
+      b.deposit = (typeof BookingRules !== 'undefined') ? BookingRules.depositFor(seat, b.guests) : 0;
       b.depositPaid = idx === 0;
       b.depositPaidAt = idx === 0 ? new Date(now.getTime() - 60 * 60000).toISOString() : null;
       if (idx === 1) {

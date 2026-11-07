@@ -658,11 +658,22 @@ const API = {
       return this._read().find(s => s.tableId === tableId && s.status === 'active') || null;
     },
 
-    open(tableId) {
+    open(tableId, booking) {
       const table = String(tableId || '').trim().toUpperCase();
       if (!table) return { ok: false, error: 'Thiếu mã bàn' };
       const existing = this.getOpenByTable(table);
-      if (existing) return { ok: true, session: existing, existing: true };
+      if (existing) {
+        if (booking && booking.id && !existing.bookingId) {
+          existing.bookingId = booking.id;
+          existing.depositTotal = Number(booking.deposit) || 0;
+          existing.depositUsed = 0;
+          existing.depositRemaining = Number(booking.deposit) || 0;
+          const list0 = this._read();
+          const i0 = list0.findIndex(s => s.id === existing.id);
+          if (i0 >= 0) { list0[i0] = existing; this._write(list0); }
+        }
+        return { ok: true, session: existing, existing: true };
+      }
       const list = this._read();
       const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const seq = list.filter(s => s.tableId === table && s.id.includes(day)).length + 1;
@@ -674,13 +685,29 @@ const API = {
         closedAt: null,
         total: 0,
         orderCount: 0,
-        source: 'qr_table'
+        source: 'qr_table',
+        bookingId: booking && booking.id ? booking.id : null,
+        depositTotal: booking ? (Number(booking.deposit) || 0) : 0,
+        depositUsed: 0,
+        depositRemaining: booking ? (Number(booking.deposit) || 0) : 0
       };
       list.unshift(session);
       if (!this._write(list)) return { ok: false, error: 'Không lưu được phiên bàn' };
       try { if (API.seats) API.seats.setStatus(table, 'occupied'); } catch (e) {}
       try { _audit({ action: 'table.session_open', targetId: session.id, ok: true }); } catch (e) {}
       return { ok: true, session, existing: false };
+    },
+
+    applyDeposit(sessionId, amount) {
+      const list = this._read();
+      const i = list.findIndex(s => s.id === sessionId);
+      if (i < 0) return { applied: 0, remaining: 0 };
+      const rem = Math.max(0, Number(list[i].depositRemaining) || 0);
+      const applied = Math.min(rem, Math.max(0, Number(amount) || 0));
+      list[i].depositUsed = (Number(list[i].depositUsed) || 0) + applied;
+      list[i].depositRemaining = rem - applied;
+      this._write(list);
+      return { applied, remaining: list[i].depositRemaining };
     },
 
     join(tableId) {
@@ -1136,7 +1163,7 @@ const API = {
       const list = this.getAll();
       const deposit = opts.seed ? 0 : (Number.isFinite(Number(data.deposit))
         ? Math.max(0, Number(data.deposit))
-        : (typeof BookingRules !== 'undefined' ? BookingRules.depositFor(seat) : 0));
+        : (typeof BookingRules !== 'undefined' ? BookingRules.depositFor(seat, data.guests) : 0));
       const bk = {
         id: 'BK' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         userId: data.userId || null,
@@ -1213,7 +1240,7 @@ const API = {
         const chk = BookingRules.validate({ date, time, guests, seat, now: new Date(), activeCount: 0 });
         if (!chk.ok) return _setLastError(chk.error);
       }
-      const deposit = typeof BookingRules !== 'undefined' ? BookingRules.depositFor(seat) : 0;
+      const deposit = typeof BookingRules !== 'undefined' ? BookingRules.depositFor(seat, guests) : 0;
       const list = this.getAll();
       const bk = {
         id: 'BH' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -1421,7 +1448,7 @@ const API = {
 
       API.seats.syncFromBookings();
       try { API.seats.setStatus(list[i].seatId, 'occupied'); } catch (e) {}
-      try { API.tableSessions.open(list[i].seatId); } catch (e) {}
+      try { API.tableSessions.open(list[i].seatId, list[i]); } catch (e) {}
       _audit({ action: 'booking.check_in', targetId: id, ok: true });
       return list[i];
     },
@@ -1661,6 +1688,18 @@ const API = {
       const total = (serviceType === 'table_service' || serviceType === 'counter_pickup' || serviceType === 'takeaway')
         ? Math.max(0, quote.subtotal - quote.discount)
         : quote.total;
+      let depositApplied = 0;
+      let amountDue = total;
+      let bookingId = data.bookingId || null;
+      if (tableSessionId && typeof API.tableSessions !== 'undefined') {
+        const session = API.tableSessions.getById(tableSessionId);
+        if (session && session.bookingId) {
+          bookingId = session.bookingId;
+          const dep = API.tableSessions.applyDeposit(tableSessionId, total);
+          depositApplied = dep.applied;
+          amountDue = Math.max(0, total - depositApplied);
+        }
+      }
       const o = {
         id: 'OD' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         userId: ownerId,
@@ -1668,6 +1707,10 @@ const API = {
         source,
         tableId,
         tableSessionId,
+        bookingId,
+        depositApplied,
+        amountDue,
+        amountPaid: amountDue,
         items: quote.lines,
         total,
         subtotal: quote.subtotal,
@@ -2402,9 +2445,34 @@ const API = {
       if (!quote.ok) throw new Error(quote.error);
 
       const method = ['cash', 'transfer', 'card'].includes(data.paymentMethod) ? data.paymentMethod : 'cash';
+      const isTable = data.serviceType === 'table_service';
+      const tableId = isTable && data.tableId ? String(data.tableId).toUpperCase() : null;
+      let tableSessionId = null;
+      if (isTable) {
+        if (!tableId) throw new Error('Table Service phải chọn bàn trước khi thu tiền');
+        const seat = API.seats.getById(tableId);
+        if (!seat) throw new Error('Bàn ' + tableId + ' không tồn tại');
+        if (seat.status === 'cleaning') throw new Error('Bàn ' + tableId + ' đang dọn');
+        if (seat.status === 'booked' || seat.status === 'held') throw new Error('Bàn ' + tableId + ' đang giữ/đặt — check-in trước');
+        const joined = API.tableSessions.open(tableId);
+        if (!joined || !joined.ok) throw new Error('Không mở được phiên bàn ' + tableId);
+        tableSessionId = joined.session.id;
+      }
       const cashReceived = method === 'cash' ? Number(data.cashReceived) : quote.total;
-      if (method === 'cash' && (!Number.isFinite(cashReceived) || cashReceived < quote.total)) {
-        throw new Error('Tiền khách đưa chưa đủ ' + API.utils.formatVND(quote.total));
+      let depositApplied = 0;
+      let amountDue = isTable && tableSessionId ? quote.total : quote.total;
+      let bookingId = null;
+      if (isTable && tableSessionId) {
+        const session = API.tableSessions.getById(tableSessionId);
+        if (session && session.bookingId) {
+          bookingId = session.bookingId;
+          const dep = API.tableSessions.applyDeposit(tableSessionId, quote.total);
+          depositApplied = dep.applied;
+          amountDue = Math.max(0, quote.total - depositApplied);
+        }
+      }
+      if (method === 'cash' && (!Number.isFinite(cashReceived) || cashReceived < amountDue)) {
+        throw new Error('Tiền khách đưa chưa đủ ' + API.utils.formatVND(amountDue));
       }
 
       const list = API.orders.getAll();
@@ -2412,13 +2480,17 @@ const API = {
       const sale = {
         id: 'POS' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
         userId: data.customerId || null,
-        serviceType: 'counter_pickup',
+        serviceType: isTable ? 'table_service' : 'counter_pickup',
         source: 'counter_pos',
-        tableId: null,
-        tableSessionId: null,
+        tableId,
+        tableSessionId,
+        bookingId,
+        depositApplied,
+        amountDue,
+        amountPaid: amountDue,
         kitchenStatus: 'submitted',
         kitchenCode: API.orders._nextKdsCode(),
-        pickupCode: API.orders._nextPickupCode(),
+        pickupCode: isTable ? null : API.orders._nextPickupCode(),
         paymentStatus: 'paid',
         channel: 'pos',
         items: quote.lines,
@@ -2428,8 +2500,8 @@ const API = {
         promoCode: quote.promoCode || '',
         total: quote.total,
         paymentMethod: method,
-        cashReceived: method === 'cash' ? cashReceived : quote.total,
-        change: method === 'cash' ? cashReceived - quote.total : 0,
+        cashReceived: method === 'cash' ? cashReceived : amountDue,
+        change: method === 'cash' ? Math.max(0, cashReceived - amountDue) : 0,
         staffId: staff ? staff.id : null,
         status: 'completed',
         step: 4,

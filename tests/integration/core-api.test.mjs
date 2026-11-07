@@ -496,7 +496,7 @@ test('Nhân viên đặt bàn hộ: tìm khách theo SĐT, tính cọc, ghi staf
   assert.equal(bk.userId, 'U001', 'phải gắn đúng khách theo SĐT');
   assert.equal(bk.customerName, 'Khách Demo');
   assert.equal(bk.createdBy, 'staff');
-  assert.equal(bk.deposit, 70000);
+  assert.equal(bk.deposit, 140000);
   assert.equal(bk.depositPaid, true);
   assert.equal(API.seats.getById(seat.id).status, 'booked');
 });
@@ -533,7 +533,7 @@ test('Giữ bàn trực tiếp (hold) + thu cọc', () => {
   const hold = API.bookings.hold({ seatId: seat.id, guests: 4, customerName: 'Giữ chỗ' });
   assert.ok(hold, API._lastError);
   assert.equal(hold.status, 'held');
-  assert.equal(hold.deposit, 70000);
+  assert.equal(hold.deposit, 140000);
   assert.equal(API.seats.getById(seat.id).status, 'held');
 
   const paid = API.bookings.setDepositPaid(hold.id, true);

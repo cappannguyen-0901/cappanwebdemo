@@ -1429,6 +1429,18 @@ body[data-page="booking"] .seat-area .seat.booked {
   color: #C62828;
   cursor: not-allowed;
 }
+body[data-page="booking"] .seat-area .seat.occupied {
+  background: linear-gradient(180deg, #FFF8E8 0%, #FFE9C7 100%);
+  border: 2px solid #F0B35A;
+  color: #B45309;
+  cursor: not-allowed;
+}
+body[data-page="booking"] .seat-area .seat.cleaning {
+  background: linear-gradient(180deg, #F4F6F7 0%, #E5EAEC 100%);
+  border: 2px dashed #90A4AE;
+  color: #37474F;
+  cursor: not-allowed;
+}
 body[data-page="booking"] .seat-area .seat.selected {
   background: linear-gradient(145deg, #FFF8D6 0%, #F3C744 50%, #C9A227 100%) !important;
   border-color: #FFFFFF !important;

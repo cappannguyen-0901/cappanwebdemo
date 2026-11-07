@@ -435,7 +435,7 @@ function renderAudit() {
 function renderStats() {
   const seats = API.seats.getAll();
   const available = seats.filter(s => s.status === 'available').length;
-  const booked = seats.filter(s => s.status === 'booked').length;
+  const booked = seats.filter(s => s.status === 'booked' || s.status === 'occupied').length;
   const held = seats.filter(s => s.status === 'held').length;
   const activeOrders = API.orders.getActive().length;
   const today = API.stats.today();
@@ -460,7 +460,7 @@ function renderStats() {
       <div class="stat-icon">🔴</div>
       <div class="stat-info">
         <div class="stat-value">${booked}</div>
-        <div class="stat-label">Đã đặt</div>
+        <div class="stat-label">Đã đặt / có khách</div>
       </div>
     </div>
     <div class="stat-card">
@@ -520,18 +520,24 @@ function renderSeatMap() {
   el.innerHTML = seats.map(s => {
     const activeBooking = API.bookings.getActiveBySeat(s.id);
     const isHeld = s.status === 'held';
-    const isBooked = s.status === 'booked' || isHeld;
-    const canWalkIn = !isBooked;
+    const isBooked = s.status === 'booked';
+    const isOccupied = s.status === 'occupied';
+    const isCleaning = s.status === 'cleaning';
+    const canWalkIn = s.status === 'available';
+    const label = isHeld ? 'Đang giữ' : isBooked ? 'Đã đặt' : isOccupied ? 'Có khách' : isCleaning ? 'Đang dọn' : 'Trống';
     return `
       <div class="staff-seat ${s.status}${canWalkIn ? ' clickable' : ''}"
            ${canWalkIn ? `onclick="openWalkInSeat('${s.id}')" role="button" tabindex="0" title="Xếp khách vãng lai" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openWalkInSeat('${s.id}')}"` : ''}>
-        ${isBooked ? `<button class="seat-reset-btn"
+        ${(isBooked || isHeld) ? `<button class="seat-reset-btn"
           onclick="event.stopPropagation(); resetSeat('${s.id}')"
           title="Reset">✕</button>` : ''}
+        ${isCleaning ? `<button class="seat-reset-btn"
+          onclick="event.stopPropagation(); cleanSeat('${s.id}')"
+          title="Đã dọn">✓</button>` : ''}
         <div class="seat-icon">🪑</div>
         <div class="seat-id">${s.id}</div>
         <div class="seat-capacity">${s.capacity}👤</div>
-        <div class="seat-status">${isHeld ? 'Đang giữ' : (isBooked ? 'Đã đặt' : 'Trống')}</div>
+        <div class="seat-status">${label}</div>
         ${activeBooking ? `<div class="seat-customer">${activeBooking.id}</div>` : ''}
       </div>
     `;
@@ -577,6 +583,14 @@ function submitDashWalkIn(e) {
   showToast(`✓ Đã xếp bàn ${bk.seatId} cho ${bk.guests} khách vãng lai`);
   dashWalkSeat = null;
   return false;
+}
+
+function cleanSeat(seatId) {
+  const seat = API.seats.getById(seatId);
+  if (!seat || seat.status !== 'cleaning') { showToast('Bàn này không ở trạng thái đang dọn', '#856404'); return; }
+  API.seats.setStatus(seatId, 'available');
+  refreshAll();
+  showToast(`✓ Bàn ${seatId} đã dọn, sẵn sàng đón khách`);
 }
 
 function resetSeat(seatId) {

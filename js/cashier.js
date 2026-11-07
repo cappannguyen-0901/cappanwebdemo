@@ -15,6 +15,31 @@
   const $ = id => document.getElementById(id);
   const money = n => API.utils.formatVND(Number(n) || 0);
 
+  function currentService() {
+    return ($('posService') || {}).value || 'counter_pickup';
+  }
+
+  function renderPosTables() {
+    const sel = $('posTable');
+    if (!sel) return;
+    const current = sel.value;
+    let seats = [];
+    try {
+      seats = API.seats.getAll().filter(s => s.status === 'available' || s.status === 'occupied');
+    } catch (e) {}
+    sel.innerHTML = '<option value="">— Chọn bàn —</option>' + seats.map(s => {
+      const label = s.id + (s.status === 'occupied' ? ' · có khách/booking' : ' · trống');
+      return `<option value="${s.id}" ${s.id === current ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+  }
+
+  function onPosServiceChange() {
+    const row = $('posTableRow');
+    if (row) row.style.display = currentService() === 'table_service' ? '' : 'none';
+    if (currentService() === 'table_service') renderPosTables();
+    if (typeof renderBill === 'function') renderBill();
+  }
+
   function priceOf(item, size) {
     if (!item) return 0;
     const base = Number(item.price) || 0;
@@ -58,6 +83,23 @@
     return API.pos.quote({ items: posBill, promoCode: posPromo });
   }
 
+  function selectedSession() {
+    if (currentService() !== 'table_service') return null;
+    const tableId = ($('posTable') || {}).value || '';
+    if (!tableId) return null;
+    return API.tableSessions.getOpenByTable(tableId);
+  }
+
+  function depositForQuote(total) {
+    const session = selectedSession();
+    if (!session || !session.bookingId) return 0;
+    return Math.min(Number(session.depositRemaining) || 0, Number(total) || 0);
+  }
+
+  function dueForQuote(total) {
+    return Math.max(0, (Number(total) || 0) - depositForQuote(total));
+  }
+
   function renderBill() {
     const linesEl = $('posLines');
     const sumEl = $('posSummary');
@@ -98,10 +140,13 @@
       sumEl.innerHTML = `<p class="empty-note" style="color:var(--red);">${esc(q.error || 'Không tính được hoá đơn')}</p>`;
       return;
     }
+    const deposit = depositForQuote(q.total);
+    const due = dueForQuote(q.total);
     sumEl.innerHTML = `
       <div class="pos-summary-row"><span>Tạm tính</span><span>${money(q.subtotal)}</span></div>
       ${q.discount ? `<div class="pos-summary-row"><span>Giảm giá ${esc(q.promoCode || '')}</span><span>−${money(q.discount)}</span></div>` : ''}
-      <div class="pos-summary-row total"><span>Tổng cộng</span><span>${money(q.total)}</span></div>
+      ${deposit ? `<div class="pos-summary-row"><span>Trừ cọc booking</span><span>−${money(deposit)}</span></div>` : ''}
+      <div class="pos-summary-row total"><span>${deposit ? 'Còn phải trả' : 'Tổng cộng'}</span><span>${money(due)}</span></div>
     `;
     renderChange(q);
   }
@@ -117,9 +162,10 @@
     if (method !== 'cash') { el.textContent = 'Khách trả đủ bằng chuyển khoản/thẻ.'; return; }
     const cash = Number(($('posCash') || {}).value) || 0;
     if (!cash) { el.textContent = 'Nhập tiền khách đưa để tính tiền thối.'; return; }
-    el.textContent = cash >= qq.total
-      ? `Tiền thối: ${money(cash - qq.total)}`
-      : `Còn thiếu: ${money(qq.total - cash)}`;
+    const due = dueForQuote(qq.total);
+    el.textContent = cash >= due
+      ? `Tiền thối: ${money(cash - due)}`
+      : `Còn thiếu: ${money(due - cash)}`;
   }
 
   function renderRecent() {
@@ -211,23 +257,36 @@
   window.renderPosMenu = renderMenu;
   window.renderBill = renderBill;
   window.renderChange = renderChange;
+  window.onPosServiceChange = onPosServiceChange;
 
   window.checkoutPos = function () {
     const q = quote();
     if (!q.ok) { showToast('⚠ ' + q.error, '#c62828'); return; }
+    const service = currentService();
+    const tableId = service === 'table_service' ? (($('posTable') || {}).value || '') : '';
+    if (service === 'table_service' && !tableId) {
+      showToast('⚠ Chọn bàn trước khi thu tiền Table Service', '#c62828');
+      return;
+    }
     const method = ($('posMethod') || {}).value || 'cash';
     const cash = Number(($('posCash') || {}).value) || 0;
-    if (method === 'cash' && cash < q.total) {
-      showToast('⚠ Tiền khách đưa chưa đủ ' + money(q.total), '#c62828');
+    const due = dueForQuote(q.total);
+    if (method === 'cash' && cash < due) {
+      showToast('⚠ Tiền khách đưa chưa đủ ' + money(due), '#c62828');
       return;
     }
     const methodLabel = method === 'cash' ? 'tiền mặt' : method === 'transfer' ? 'chuyển khoản' : 'thẻ';
-    if (!confirm(`Thu ${money(q.total)} (${methodLabel})?`)) return;
+    if (!confirm(`Thu ${money(due)} (${methodLabel})?`)) return;
 
     let sale;
     try {
       sale = API.pos.createSale({
-        items: posBill, promoCode: posPromo, paymentMethod: method, cashReceived: cash
+        items: posBill,
+        promoCode: posPromo,
+        paymentMethod: method,
+        cashReceived: cash,
+        serviceType: service,
+        tableId: service === 'table_service' ? tableId : null
       });
     } catch (err) {
       showToast('⚠ ' + (err && err.message ? err.message : 'Không thu được tiền'), '#c62828');
@@ -235,9 +294,10 @@
     }
 
     const change = Number(sale.change) || 0;
+    const where = sale.serviceType === 'table_service' ? ('bàn ' + sale.tableId) : (sale.pickupCode || sale.id);
     showToast(change > 0
-      ? `✓ Đã thu ${money(sale.total)} · thối ${money(change)} · ${sale.pickupCode || sale.id}`
-      : `✓ Đã thu ${money(sale.total)} · ${sale.pickupCode || sale.id}`);
+      ? `✓ Đã thu ${money(sale.amountDue || sale.total)} · thối ${money(change)} · ${where}`
+      : `✓ Đã thu ${money(sale.amountDue || sale.total)} · ${where}`);
     clearBill();
     renderRecent();
     if (typeof renderMenu === 'function') renderMenu();
@@ -251,6 +311,7 @@
     renderMenu();
     renderBill();
     renderRecent();
+    onPosServiceChange();
 
     const method = $('posMethod');
     if (method) method.addEventListener('change', () => renderBill());
