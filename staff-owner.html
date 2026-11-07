@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Owner Cockpit — CAPPAN</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN Owner Cockpit — alert, insight, recommendation cho chủ quán.">
+<meta property="og:title" content="CAPPAN – Coffee &amp; More">
+<meta property="og:description" content="CAPPAN – Coffee &amp; More · Home Study. Đặt bàn, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="staff.css">
+<link rel="stylesheet" href="dark-mode.css">
+<link rel="stylesheet" href="card-premium.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<style>
+  .own-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin-bottom: 14px; }
+  .own-kpi { background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 13px; padding: 13px 15px; }
+  .own-kpi .label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8b7160; font-weight: 800; }
+  .own-kpi .value { margin-top: 4px; font-family: Georgia, serif; font-size: 25px; color: #2b1f18; }
+  .own-kpi .hint { font-size: 10px; color: #8b7160; margin-top: 3px; }
+  .own-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; }
+  .own-panel { background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 14px; padding: 14px 16px; }
+  .own-panel h2 { margin: 0 0 2px; font-size: 15px; color: #2b1f18; }
+  .own-panel .sub { font-size: 10.5px; color: #8b7160; margin-bottom: 10px; }
+  .own-alert { display: grid; grid-template-columns: 8px 1fr auto; gap: 9px; align-items: start; padding: 9px 0; border-bottom: 1px dashed #efe3d5; }
+  .own-alert:last-child { border-bottom: 0; }
+  .own-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; }
+  .own-dot.red { background: #b3261e; }
+  .own-dot.yellow { background: #b36b00; }
+  .own-dot.green { background: #23662a; }
+  .own-alert b { font-size: 11.5px; color: #2b1f18; }
+  .own-alert p { margin: 2px 0 0; font-size: 10.5px; line-height: 1.4; color: #8b7160; }
+  .own-alert button { border: 1px solid #d9c8b5; background: #fffdf9; color: #5b402b; border-radius: 7px; padding: 4px 7px; font-size: 10px; cursor: pointer; white-space: nowrap; }
+  .own-insight { background: #2a1a14; color: #fbf7f0; border-radius: 12px; padding: 14px; font-size: 12px; line-height: 1.55; margin-bottom: 10px; }
+  .own-insight .k { color: #f3dc82; font-weight: 800; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+  .own-rec { border: 1px solid #e4bf48; background: #fff6df; border-radius: 12px; padding: 12px; }
+  .own-rec h4 { margin: 0; font-size: 13px; color: #2b1f18; }
+  .own-rec p { margin: 4px 0 8px; font-size: 10.5px; line-height: 1.45; color: #6f4e37; }
+  .own-rec .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .own-rec button { border-radius: 8px; padding: 7px 11px; font-size: 11px; cursor: pointer; }
+  .own-rec .yes { background: #2a1a14; color: #f3dc82; border: 1px solid #2a1a14; font-weight: 800; }
+  .own-rec .no { background: #fffdf9; color: #5b402b; border: 1px solid #d9c8b5; }
+  .own-chat { margin-top: 12px; border-top: 1px dashed #efe3d5; padding-top: 10px; }
+  .own-chat h3 { margin: 0 0 5px; font-size: 12px; color: #2b1f18; }
+  .own-chat-log { max-height: 120px; overflow: auto; font-size: 10.5px; line-height: 1.45; color: #4a3427; }
+  .own-chat-log .q { color: #23662a; font-weight: 700; margin-top: 5px; }
+  .own-chat-log .a { color: #4a3427; }
+  .own-chat form { display: flex; gap: 5px; margin-top: 7px; }
+  .own-chat input { flex: 1; min-width: 0; border: 1px solid #d9c8b5; border-radius: 8px; padding: 7px 9px; font-size: 11px; }
+  .own-chat button { border: 0; border-radius: 8px; background: #2a1a14; color: #f3dc82; padding: 7px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+  .own-empty { color: #8b7160; font-size: 11px; padding: 10px 0; }
+  @media (max-width: 1000px) { .own-grid { grid-template-columns: 1fr; } .own-kpis { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body data-page="staff-owner">
+
+<header class="app-header">
+  <a class="logo" href="staff-dashboard.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Staff Panel</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav"></nav>
+</header>
+
+<div class="dashboard-layout" id="dashboardLayout">
+  <div class="dashboard-main">
+    <section class="section">
+      <div class="staff-header">
+        <div>
+          <h1 class="staff-title">🧭 Owner Cockpit</h1>
+          <p class="staff-sub">Chỉ 3 việc: có gì bất thường, vì sao, và nên làm gì. Không biểu đồ rối.</p>
+        </div>
+      </div>
+      <div class="own-kpis" id="ownerKpis"></div>
+      <div class="own-grid">
+        <div>
+          <div class="own-panel" style="margin-bottom:12px">
+            <h2>🔔 Alert Center</h2>
+            <div class="sub">Ưu tiên đỏ → vàng → xanh. Có thể bật/tắt từng loại sau.</div>
+            <div id="ownerAlerts"></div>
+          </div>
+          <div class="own-panel">
+            <h2>💡 Insight of the Day</h2>
+            <div class="sub">Số liệu được dịch thành câu chuyện có thể hành động.</div>
+            <div id="ownerInsight"></div>
+          </div>
+        </div>
+        <div class="own-panel">
+          <h2>✅ Recommendation</h2>
+          <div class="sub">Chủ quán chỉ cần Đồng ý / Từ chối. Hành động có audit.</div>
+          <div id="ownerRec"></div>
+          <div class="own-chat">
+            <h3>Hỏi nhanh Owner Copilot</h3>
+            <div class="own-chat-log" id="ownerChatLog"></div>
+            <form onsubmit="OwnerCopilot.ask(event)">
+              <input id="ownerChatInput" placeholder="VD: hôm nay thế nào?" autocomplete="off">
+              <button type="submit">Gửi</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/staff-guard.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/staff-nav.js"></script>
+<script src="js/dark-mode.js"></script>
+<script src="js/owner-copilot.js"></script>
+</body>
+</html>

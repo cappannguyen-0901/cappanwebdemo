@@ -48,6 +48,9 @@ if (build.mode === 'demo') {
   CASES.push(
     { page: 'staff-dashboard.html', query: '?as=0900000002', must: ['Nhật ký hoạt động', 'Sơ đồ chỗ ngồi'] },
     { page: 'staff-cashier.html', query: '?as=0900000002', must: ['Thu ngân', 'Hoá đơn'] },
+    { page: 'staff-kds.html', query: '?as=0900000002', must: ['KDS bếp', 'Bật mic'] },
+    { page: 'staff-owner.html', query: '?as=0900000002', must: ['Owner Cockpit', 'Alert Center'] },
+    { page: 'table.html', query: '?table=A1', must: ['QR TABLE SESSION', 'Bàn A1'] },
     { page: 'staff-orders.html', query: '?as=0900000002', must: ['Đơn hàng'] },
     { page: 'staff-bookings.html', query: '?as=0900000002', must: ['Danh sách booking'] },
     { page: 'staff-stats.html', query: '?as=0900000002', must: ['Thống kê'] },

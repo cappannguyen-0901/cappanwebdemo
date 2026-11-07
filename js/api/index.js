@@ -634,6 +634,107 @@ const API = {
     }
   },
 
+  /* ---------- TABLE SESSIONS (QR tại bàn) ---------- */
+  tableSessions: {
+    KEY: 'cappan_table_sessions_v1',
+    CURRENT: 'cappan_current_table_session',
+
+    _read() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(this.KEY) || '[]');
+        return Array.isArray(raw) ? raw : [];
+      } catch (e) { return []; }
+    },
+
+    _write(list) {
+      return storeSet(this.KEY, JSON.stringify(list));
+    },
+
+    getAll() { return this._read(); },
+
+    getById(id) { return this._read().find(s => s.id === id) || null; },
+
+    getOpenByTable(tableId) {
+      return this._read().find(s => s.tableId === tableId && s.status === 'active') || null;
+    },
+
+    open(tableId) {
+      const table = String(tableId || '').trim().toUpperCase();
+      if (!table) return { ok: false, error: 'Thiếu mã bàn' };
+      const existing = this.getOpenByTable(table);
+      if (existing) return { ok: true, session: existing, existing: true };
+      const list = this._read();
+      const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const seq = list.filter(s => s.tableId === table && s.id.includes(day)).length + 1;
+      const session = {
+        id: `TS_${table}_${day}_${String(seq).padStart(2, '0')}`,
+        tableId: table,
+        status: 'active',
+        openedAt: new Date().toISOString(),
+        closedAt: null,
+        total: 0,
+        orderCount: 0,
+        source: 'qr_table'
+      };
+      list.unshift(session);
+      if (!this._write(list)) return { ok: false, error: 'Không lưu được phiên bàn' };
+      try { _audit({ action: 'table.session_open', targetId: session.id, ok: true }); } catch (e) {}
+      return { ok: true, session, existing: false };
+    },
+
+    join(tableId) {
+      return this.open(tableId);
+    },
+
+    setCurrent(session) {
+      try {
+        if (session) sessionStorage.setItem(this.CURRENT, JSON.stringify(session));
+        else sessionStorage.removeItem(this.CURRENT);
+      } catch (e) {}
+    },
+
+    getCurrent() {
+      try {
+        const raw = sessionStorage.getItem(this.CURRENT);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    },
+
+    getBill(id) {
+      let orders = [];
+      try { orders = API.orders.getAll(); } catch (e) {}
+      const lines = orders.filter(o => o.tableSessionId === id && o.status !== 'cancelled');
+      return {
+        sessionId: id,
+        orders: lines,
+        total: lines.reduce((s, o) => s + (Number(o.total) || 0), 0),
+        orderCount: lines.length
+      };
+    },
+
+    settle(id) {
+      const session = this.getById(id);
+      if (!session || session.status !== 'active') return { ok: false, error: 'Phiên bàn không mở' };
+      const bill = this.getBill(id);
+      const orders = API.orders.getAll().map(o =>
+        o.tableSessionId === id ? { ...o, paymentStatus: 'settled', paymentMethod: o.paymentMethod || 'pay_later' } : o
+      );
+      if (!storeSet(STORAGE_KEYS.orders, JSON.stringify(orders))) return { ok: false, error: 'Không lưu được thanh toán' };
+      const list = this._read();
+      const i = list.findIndex(s => s.id === id);
+      if (i !== -1) {
+        list[i].status = 'closed';
+        list[i].closedAt = new Date().toISOString();
+        list[i].total = bill.total;
+        list[i].orderCount = bill.orderCount;
+        this._write(list);
+      }
+      this.setCurrent(null);
+      try { _audit({ action: 'table.session_close', targetId: id, ok: true }); } catch (e) {}
+      return { ok: true, total: bill.total, orderCount: bill.orderCount, session: list[i] };
+    }
+  },
+
   /* ---------- PROMOTIONS (quản lý trên giao diện staff) ---------- */
   promotions: {
     KEY: 'cappan_promotions',
@@ -1437,6 +1538,12 @@ const API = {
       }
     },
 
+    _nextKdsCode() {
+      const day = new Date().toISOString().slice(0, 10);
+      const n = this.getAll().filter(o => String(o.createdAt || '').slice(0, 10) === day).length + 1;
+      return 'A' + String(n).padStart(2, '0');
+    },
+
     create(data) {
       data = data || {};
       const quote = this.preview(data);
@@ -1447,14 +1554,36 @@ const API = {
         return _setLastError('Bạn không có quyền tạo đơn cho tài khoản khác');
       }
 
+      const serviceType = ['dine_in', 'takeaway', 'delivery'].includes(data.serviceType)
+        ? data.serviceType : 'delivery';
+      const source = data.source || (serviceType === 'dine_in' ? 'counter_pos' : 'web');
+      let tableId = data.tableId ? String(data.tableId).toUpperCase() : null;
+      let tableSessionId = data.tableSessionId || null;
+      if (serviceType === 'dine_in' && tableId && !tableSessionId && typeof API.tableSessions !== 'undefined') {
+        const joined = API.tableSessions.join(tableId);
+        if (joined && joined.ok) tableSessionId = joined.session.id;
+      }
+      const paymentMethod = data.paymentMethod || 'pay_later';
+      const paymentStatus = data.paymentStatus || (
+        paymentMethod === 'pay_later' ? 'pay_later_open' : (data.paid ? 'paid' : 'unpaid')
+      );
+
       const list = this.getAll();
+      const shipping = (serviceType === 'dine_in' || serviceType === 'takeaway') ? 0 : quote.shipping;
+      const total = (serviceType === 'dine_in' || serviceType === 'takeaway')
+        ? Math.max(0, quote.subtotal - quote.discount)
+        : quote.total;
       const o = {
         id: 'OD' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         userId: ownerId,
+        serviceType,
+        source,
+        tableId,
+        tableSessionId,
         items: quote.lines,
-        total: quote.total,
+        total,
         subtotal: quote.subtotal,
-        shipping: quote.shipping,
+        shipping,
         discount: quote.discount,
         promoCode: quote.promoCode || '',
         address: data.address || '',
@@ -1463,6 +1592,10 @@ const API = {
         customerName: data.customerName || '',
         status: 'pending',
         step: 0,
+        kitchenStatus: 'submitted',
+        kitchenCode: this._nextKdsCode(),
+        paymentMethod,
+        paymentStatus,
         createdAt: new Date().toISOString()
       };
       // ⚡ Trừ kho tại thời điểm bán/đặt: một ly matcha cuối cùng sẽ làm món hết ngay.
@@ -1479,6 +1612,40 @@ const API = {
       this.setCurrent(o);
       _audit({ action: 'order.create', targetId: o.id, ok: true });
       return o;
+    },
+
+    /* KDS: chỉ cập nhật trạng thái bếp, không phá vỡ status/step của luồng giao hàng. */
+    updateKitchen(id, kitchenStatus) {
+      const allowed = ['submitted', 'preparing', 'ready', 'served', 'cancelled'];
+      if (!allowed.includes(kitchenStatus)) return null;
+      const o = this.getById(id);
+      if (!o) return null;
+      if (!_policyAllow('order.step', { id: o.id, ownerId: o.userId })) return null;
+      const now = new Date().toISOString();
+      const patch = { kitchenStatus, kitchenUpdatedAt: now };
+      if (kitchenStatus === 'preparing') { patch.step = Math.max(1, Number(o.step) || 0); patch.status = 'preparing'; }
+      if (kitchenStatus === 'ready') { patch.step = Math.max(2, Number(o.step) || 0); patch.status = 'preparing'; }
+      if (kitchenStatus === 'served') { patch.step = Math.max(3, Number(o.step) || 0); patch.status = 'delivering'; }
+      if (kitchenStatus === 'cancelled') { patch.status = 'cancelled'; patch.cancelledAt = now; }
+      return this.update(id, patch);
+    },
+
+    getKdsQueue() {
+      const now = Date.now();
+      return this.getAll()
+        .filter(o => o && o.status !== 'cancelled' &&
+          !['served', 'cancelled'].includes(o.kitchenStatus) &&
+          (o.kitchenStatus || 'submitted') !== 'completed')
+        .map(o => {
+          const age = Math.max(0, (now - new Date(o.createdAt || 0).getTime()) / 60000);
+          const base = o.serviceType === 'delivery' ? 30 : o.serviceType === 'takeaway' ? 20 : 10;
+          return { ...o, ageMinutes: Math.round(age), priorityScore: base + age };
+        })
+        .sort((a, b) => b.priorityScore - a.priorityScore);
+    },
+
+    getByTableSession(sessionId) {
+      return this.getAll().filter(o => o.tableSessionId === sessionId && o.status !== 'cancelled');
     },
 
     /* Ghi bước đơn — dùng nội bộ, KHÔNG kiểm quyền (caller đã kiểm). */
@@ -2131,6 +2298,13 @@ const API = {
       const sale = {
         id: 'POS' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
         userId: data.customerId || null,
+        serviceType: 'dine_in',
+        source: 'counter_pos',
+        tableId: data.tableId ? String(data.tableId).toUpperCase() : null,
+        tableSessionId: data.tableSessionId || null,
+        kitchenStatus: 'submitted',
+        kitchenCode: API.orders._nextKdsCode(),
+        paymentStatus: 'paid',
         channel: 'pos',
         items: quote.lines,
         subtotal: quote.subtotal,

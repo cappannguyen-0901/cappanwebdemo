@@ -8,15 +8,17 @@ function renderStaffNav(activePage) {
 
   const items = [
     { href: 'staff-dashboard.html', label: '📊 Tổng quan',     id: 'dashboard' },
-    { href: 'staff-cashier.html',   label: '🧾 Thu ngân',      id: 'cashier' },
-    { href: 'staff-stats.html',     label: '📈 Thống kê',      id: 'stats' },
-    { href: 'staff-ai.html',        label: '🤖 Thống kê AI',   id: 'ai' },
-    { href: 'staff-orders.html',    label: '📦 Đơn hàng',      id: 'orders' },
-    { href: 'staff-bookings.html',  label: '🪑 Booking',        id: 'bookings' },
-    { href: 'staff-menu-manage.html', label: '☕ Quản lý menu', id: 'menu' },
-    { href: 'staff-ingredients.html', label: '📦 Nguyên liệu', id: 'ingredients' },
-    { href: 'staff-promotions.html', label: '🎁 Khuyến mãi',  id: 'promotions' },
-    { href: 'staff-schedule.html',  label: '📅 Lịch ca',        id: 'schedule' }
+    { href: 'staff-owner.html',     label: '🧭 Owner',          id: 'owner' },
+    { href: 'staff-cashier.html',   label: '🧾 Thu ngân',       id: 'cashier' },
+    { href: 'staff-kds.html',       label: '🎙 KDS',            id: 'kds' },
+    { href: 'staff-stats.html',     label: '📈 Thống kê',       id: 'stats' },
+    { href: 'staff-ai.html',        label: '🤖 AI',             id: 'ai' },
+    { href: 'staff-orders.html',    label: '📦 Đơn',            id: 'orders' },
+    { href: 'staff-bookings.html',  label: '🪑 Booking',         id: 'bookings' },
+    { href: 'staff-menu-manage.html', label: '☕ Menu',          id: 'menu' },
+    { href: 'staff-ingredients.html', label: '📦 Kho',           id: 'ingredients' },
+    { href: 'staff-promotions.html', label: '🎁 KM',             id: 'promotions' },
+    { href: 'staff-schedule.html',  label: '📅 Ca',             id: 'schedule' }
   ];
 
   const listHtml = items.map(it =>

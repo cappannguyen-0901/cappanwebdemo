@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Order tại bàn — CAPPAN</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN — quét QR tại bàn để gọi món, gọi thêm và theo dõi đơn.">
+<meta property="og:title" content="CAPPAN – Coffee &amp; More">
+<meta property="og:description" content="CAPPAN – Coffee &amp; More · Home Study. Đặt bàn, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="dark-mode.css">
+<link rel="stylesheet" href="card-premium.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<style>
+  .tbl-shell { max-width: 1180px; margin: 0 auto; padding: 26px 18px 50px; }
+  .tbl-banner {
+    display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: #2a1a14; color: #fbf7f0; border-radius: 16px; padding: 16px 20px; margin-bottom: 18px;
+  }
+  .tbl-banner .label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #c9a227; font-weight: 800; }
+  .tbl-banner h1 { margin: 3px 0 0; font-family: Georgia, serif; font-size: 26px; }
+  .tbl-banner p { margin: 3px 0 0; font-size: 12px; color: #d9c8b5; }
+  .tbl-banner .session { font-size: 10px; color: #e4bf48; word-break: break-all; }
+  .tbl-layout { display: grid; grid-template-columns: 1fr 330px; gap: 16px; align-items: start; }
+  .tbl-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 11px; }
+  .tbl-card { background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 13px; overflow: hidden; }
+  .tbl-card img { width: 100%; height: 110px; object-fit: cover; display: block; }
+  .tbl-card .info { padding: 10px 11px; }
+  .tbl-card h4 { margin: 0; font-size: 13px; color: #2b1f18; }
+  .tbl-card .price { font-size: 12px; font-weight: 800; color: #6f4e37; margin: 4px 0 7px; }
+  .tbl-card button { border: 1px solid #d9c8b5; background: #fffdf9; color: #5b402b; border-radius: 7px; padding: 6px 8px; font-size: 11px; width: 100%; cursor: pointer; }
+  .tbl-card button.primary { background: #2a1a14; border-color: #2a1a14; color: #f3dc82 !important; font-weight: 700; }
+  .tbl-card button:disabled { opacity: .5; cursor: not-allowed; }
+  .tbl-card .tag { display: inline-block; margin-top: 5px; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: #fff0cf; color: #8a5a00; }
+  .tbl-cart { background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 14px; padding: 14px; position: sticky; top: 88px; }
+  .tbl-cart h3 { margin: 0 0 3px; font-size: 14px; color: #2b1f18; }
+  .tbl-cart .sub { font-size: 10.5px; color: #8b7160; margin-bottom: 9px; }
+  .tbl-line { display: grid; grid-template-columns: 1fr auto auto; gap: 7px; align-items: center; padding: 6px 0; border-bottom: 1px dashed #efe3d5; font-size: 11px; }
+  .tbl-line .qty { display: flex; gap: 3px; }
+  .tbl-line .qty button { width: 20px; height: 20px; border-radius: 5px; border: 1px solid #d9c8b5; background: #fffdf9; cursor: pointer; }
+  .tbl-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; color: #2b1f18; margin: 10px 0; }
+  .tbl-cart .submit { width: 100%; border: 0; border-radius: 9px; background: #2a1a14; color: #f3dc82; padding: 10px; font-weight: 800; cursor: pointer; }
+  .tbl-bill { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #efe3d5; font-size: 10.5px; color: #8b7160; }
+  .tbl-bill b { color: #2b1f18; }
+  .tbl-empty { padding: 28px; text-align: center; color: #8b7160; }
+  .tbl-toast { position: fixed; right: 16px; bottom: 16px; background: #2a1a14; color: #f3dc82; padding: 11px 15px; border-radius: 10px; font-size: 12px; z-index: 2000; display: none; }
+  .tbl-toast.show { display: block; }
+  @media (max-width: 860px) { .tbl-layout { grid-template-columns: 1fr; } .tbl-cart { position: static; } }
+</style>
+</head>
+<body data-page="table-order">
+
+<header class="app-header">
+  <a class="logo" href="index.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Coffee &amp; More - Home Study</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav">
+    <ul class="nav-list">
+      <li><a href="index.html">Trang chủ</a></li>
+      <li><a href="menu.html">Thực đơn</a></li>
+      <li><a href="booking.html">Đặt chỗ</a></li>
+      <li><a href="order.html">Đặt nước</a></li>
+      <li><a href="tracking.html">Theo dõi đơn</a></li>
+      <li><a href="contact.html">Liên hệ</a></li>
+    </ul>
+    <div class="user-area" id="userArea"></div>
+    <button class="theme-toggle" aria-label="Chuyển chế độ sáng/tối" id="themeToggle" onclick="toggleDarkMode()" title="Chuyển chế độ Sáng/Tối">🌙</button>
+  </nav>
+</header>
+
+<main class="tbl-shell">
+  <div class="tbl-banner">
+    <div>
+      <div class="label">QR TABLE SESSION</div>
+      <h1 id="tblTitle">Bàn A1</h1>
+      <p id="tblSub">Bạn đang ngồi tại bàn này. Gọi món, gọi thêm — bill cộng chung theo phiên bàn.</p>
+    </div>
+    <div style="text-align:right">
+      <div class="session" id="tblSession">Đang mở phiên…</div>
+      <div style="font-size:11px;color:#d9c8b5;margin-top:5px">Trả sau · nhân viên quyết toán khi ra quầy</div>
+    </div>
+  </div>
+
+  <div class="tbl-layout">
+    <div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="tblCats"></div>
+      <div class="tbl-menu" id="tblMenu"></div>
+    </div>
+    <aside class="tbl-cart">
+      <h3>Món đang gọi</h3>
+      <div class="sub" id="tblCartSub">Chưa có món nào.</div>
+      <div id="tblCart"></div>
+      <div class="tbl-total"><span>Tạm tính</span><span id="tblTotal">0đ</span></div>
+      <button class="submit" type="button" onclick="TableOrder.submit()">Gửi order xuống bếp</button>
+      <div class="tbl-bill" id="tblBill">Chưa có bill.</div>
+    </aside>
+  </div>
+</main>
+
+<div class="tbl-toast" id="tblToast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<footer class="app-footer">
+  <div class="footer-brand">CAPP<span>AN</span></div>
+  <div class="footer-tagline">Coffee &amp; More - Home Study</div>
+  <div class="footer-links">
+    <a href="index.html">Trang chủ</a>
+    <a href="menu.html">Thực đơn</a>
+    <a href="booking.html">Đặt chỗ</a>
+    <a href="order.html">Đặt nước</a>
+    <a href="cart.html">Giỏ hàng</a>
+    <a href="tracking.html">Theo dõi đơn</a>
+    <a href="contact.html">Liên hệ</a>
+    <a href="privacy.html">Chính sách bảo mật</a>
+  </div>
+  <div class="footer-copy">© CAPPANNGUYEN · Công viên Gia Định, P. Hạnh Thông, Q.Gò Vấp, TP.HCM · Hotline: 0366 444 038</div>
+</footer>
+
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/main.js"></script>
+<script src="js/dark-mode.js"></script>
+<script src="js/table-order.js"></script>
+</body>
+</html>

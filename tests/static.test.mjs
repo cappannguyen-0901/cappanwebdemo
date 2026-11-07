@@ -97,8 +97,9 @@ test('không trang nào còn khối theme lặp', () => {
   }
 });
 
-test('menu khách có đủ link (không còn Giỏ hàng trên nav) ở mọi trang khách', () => {
-  const customerPages = pages.filter(p => !p.startsWith('staff-'));
+test('menu khách có đủ link (không còn Giỏ hàng trên nav) ở mọi trang khách chuẩn', () => {
+  /* table.html là microsite QR tại bàn: có nav riêng, không phải trang khách đầy đủ. */
+  const customerPages = pages.filter(p => !p.startsWith('staff-') && p !== 'table.html');
   for (const page of customerPages) {
     const html = read(page);
     for (const [href] of CUSTOMER_LINKS) {
@@ -126,8 +127,8 @@ test('trang thu ngân tồn tại và nằm trong menu nhân viên', () => {
   assert.match(read('staff-cashier.html'), /cashier\.css/);
 });
 
-test('mọi trang khách đều có trợ lý AI (kể cả đăng nhập / chính sách)', () => {
-  const customerPages = pages.filter(p => !p.startsWith('staff-'));
+test('mọi trang khách chuẩn đều có trợ lý AI (kể cả đăng nhập / chính sách)', () => {
+  const customerPages = pages.filter(p => !p.startsWith('staff-') && p !== 'table.html');
   for (const page of customerPages) {
     const html = read(page);
     assert.match(html, /id="chatBox"/, `${page}: thiếu khung chat`);

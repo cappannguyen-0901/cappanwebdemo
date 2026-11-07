@@ -33,11 +33,15 @@ const SCHEMA = {
     desc: 'Lịch sử đặt chỗ (kể cả khách vãng lai)'
   },
   orders: {
-    fields: ['id', 'userId', 'items', 'subtotal', 'shipping', 'discount', 'total', 'promoCode',
+    fields: ['id', 'userId', 'serviceType', 'source', 'tableId', 'tableSessionId', 'items', 'subtotal', 'shipping', 'discount', 'total', 'promoCode',
              'address', 'phone', 'note', 'customerName', 'status', 'step', 'channel',
-             'paymentMethod', 'cashReceived', 'change', 'staffId', 'createdAt', 'completedAt', 'paidAt',
-             'inventoryDeducted', 'inventoryRestoredAt'],
-    desc: 'Lịch sử đơn hàng (giao hàng + thu ngân tại quầy)'
+             'paymentMethod', 'paymentStatus', 'cashReceived', 'change', 'staffId', 'createdAt', 'completedAt', 'paidAt',
+             'kitchenStatus', 'kitchenCode', 'inventoryDeducted', 'inventoryRestoredAt'],
+    desc: 'Lịch sử đơn hàng (dine-in / takeaway / delivery)'
+  },
+  tableSessions: {
+    fields: ['id', 'tableId', 'status', 'openedAt', 'closedAt', 'total', 'orderCount', 'source'],
+    desc: 'Phiên bàn QR — active/closed; bill cộng dồn theo session'
   },
   ingredients: {
     fields: ['id', 'name', 'unit', 'stock', 'minStock', 'unitCost', 'supplier', 'note', 'updatedAt'],
@@ -64,7 +68,12 @@ const ENUMS = {
   floorPurpose:  ['lobby', 'study', 'group', 'outdoor'],
   seatZone:      ['window', 'center', 'quiet', 'group'],
   seatStatus:    ['available', 'booked'],
-  inventoryType: ['import', 'sale', 'adjust', 'refund']
+  inventoryType: ['import', 'sale', 'adjust', 'refund'],
+  serviceType:   ['dine_in', 'takeaway', 'delivery'],
+  orderSource:   ['qr_table', 'counter_pos', 'web'],
+  kitchenStatus: ['submitted', 'preparing', 'ready', 'served', 'cancelled'],
+  paymentStatus: ['unpaid', 'paid', 'pay_later_open', 'settled', 'refunded'],
+  tableStatus:   ['active', 'closed']
 };
 
 const STORAGE_KEYS = {
@@ -75,5 +84,6 @@ const STORAGE_KEYS = {
   currentOrder: 'cappan_current_order',
   ingredients:  'cappan_ingredients_v1',
   bom:          'cappan_bom_v1',
-  inventoryLog: 'cappan_inventory_log_v1'
+  inventoryLog: 'cappan_inventory_log_v1',
+  tableSessions:'cappan_table_sessions_v1'
 };

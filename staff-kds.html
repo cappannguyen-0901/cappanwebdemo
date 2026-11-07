@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>KDS bếp &amp; Voice — CAPPAN Staff</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN KDS — hàng đợi pha chế, điều phối bằng giọng nói, 3 chế độ Voice/Screen.">
+<meta property="og:title" content="CAPPAN – Coffee &amp; More">
+<meta property="og:description" content="CAPPAN – Coffee &amp; More · Home Study. Đặt bàn, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="staff.css">
+<link rel="stylesheet" href="dark-mode.css">
+<link rel="stylesheet" href="card-premium.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<style>
+  .kds-wrap { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.9fr); gap: 14px; }
+  .kds-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .kds-mode { display: inline-flex; border: 1px solid #d9c8b5; border-radius: 9px; overflow: hidden; }
+  .kds-mode button { border: 0; background: #fffdf9; color: #5b402b; padding: 7px 10px; font-size: 11px; cursor: pointer; }
+  .kds-mode button.active { background: #2a1a14; color: #f3dc82; font-weight: 700; }
+  .kds-mic {
+    border: 0; border-radius: 999px; padding: 9px 17px; font-size: 12px; font-weight: 800;
+    background: #2a1a14; color: #f3dc82; cursor: pointer;
+  }
+  .kds-mic.listening { background: #b3261e; color: #fff; animation: kdsPulse 1s infinite; }
+  @keyframes kdsPulse { 50% { box-shadow: 0 0 0 8px rgba(179,38,30,.16); } }
+  .kds-status { font-size: 11px; color: #8b7160; margin: 0 0 10px; min-height: 17px; }
+  .kds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  .kds-card {
+    background: #fffdf9; border: 1px solid #e7d9c8; border-left: 5px solid #c9a227;
+    border-radius: 13px; padding: 12px 13px; box-shadow: 0 2px 9px rgba(64,42,26,.05);
+  }
+  .kds-card.delivery { border-left-color: #b3261e; }
+  .kds-card.takeaway { border-left-color: #b36b00; }
+  .kds-card.dine_in { border-left-color: #23662a; }
+  .kds-card.ready { background: #f6fbf4; }
+  .kds-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .kds-code { font-family: Georgia, serif; font-size: 22px; font-weight: 800; color: #2b1f18; }
+  .kds-service { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px; }
+  .kds-service.delivery { background: #f8dedb; color: #a5221a; }
+  .kds-service.takeaway { background: #fff0cf; color: #8a5a00; }
+  .kds-service.dine_in { background: #e3efe0; color: #23662a; }
+  .kds-meta { margin: 5px 0 8px; font-size: 10.5px; color: #8b7160; }
+  .kds-items { list-style: none; margin: 0 0 10px; padding: 0; }
+  .kds-items li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dashed #efe3d5; font-size: 12px; color: #3e2a1f; }
+  .kds-items li:last-child { border-bottom: 0; }
+  .kds-items b { color: #b36b00; }
+  .kds-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .kds-actions button { border: 1px solid #d9c8b5; background: #fffdf9; color: #5b402b; border-radius: 7px; padding: 5px 8px; font-size: 10.5px; cursor: pointer; }
+  .kds-actions button.primary { background: #2a1a14; border-color: #2a1a14; color: #f3dc82; font-weight: 700; }
+  .kds-actions button.danger { color: #a5221a; border-color: #e5b5b0; }
+  .kds-empty { padding: 36px 16px; text-align: center; border: 1px dashed #d9c8b5; border-radius: 13px; color: #8b7160; font-size: 12px; background: #fffdf9; }
+  .kds-side { background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 14px; padding: 14px; min-width: 0; }
+  .kds-side h3 { margin: 0 0 3px; font-size: 14px; color: #2b1f18; }
+  .kds-side .sub { font-size: 10.5px; color: #8b7160; margin-bottom: 9px; }
+  .kds-transcript { max-height: 330px; overflow: auto; display: flex; flex-direction: column; gap: 7px; }
+  .kds-line { font-size: 11px; line-height: 1.4; padding: 7px 9px; border-radius: 8px; background: #fcf8f2; color: #4a3427; }
+  .kds-line.ai { background: #2a1a14; color: #f3dc82; }
+  .kds-line.user { background: #e3efe0; color: #23662a; }
+  .kds-line.sys { background: #fff0cf; color: #8a5a00; }
+  .kds-tips { margin-top: 12px; font-size: 10.5px; line-height: 1.55; color: #8b7160; border-top: 1px dashed #efe3d5; padding-top: 10px; }
+  .kds-tips code { background: #f4e8d8; border-radius: 4px; padding: 1px 4px; color: #5b402b; }
+  @media (max-width: 1000px) { .kds-wrap { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-page="staff-kds">
+
+<header class="app-header">
+  <a class="logo" href="staff-dashboard.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Staff Panel</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav"></nav>
+</header>
+
+<div class="dashboard-layout" id="dashboardLayout">
+  <div class="dashboard-main">
+    <section class="section">
+      <div class="staff-header">
+        <div>
+          <h1 class="staff-title">🎙 KDS bếp &amp; điều phối</h1>
+          <p class="staff-sub">Hàng đợi ưu tiên theo kênh + thời gian chờ. Nói để cập nhật, không cần rời mắt khỏi ly.</p>
+        </div>
+      </div>
+
+      <div class="kds-bar">
+        <div class="kds-mode" role="group" aria-label="Chế độ tương tác">
+          <button type="button" data-mode="voice" onclick="KDS.setMode('voice')">Voice Only</button>
+          <button type="button" data-mode="both" class="active" onclick="KDS.setMode('both')">Voice + Screen</button>
+          <button type="button" data-mode="screen" onclick="KDS.setMode('screen')">Screen Only</button>
+        </div>
+        <button class="kds-mic" id="kdsMic" type="button" onclick="KDS.toggleMic()">🎙 Bật mic</button>
+        <button class="btn" type="button" onclick="KDS.loadDemoOrders()" style="background:#f4e8d8;color:#5b402b;border:1px solid #d9c8b5;">+ Nạp 3 đơn demo</button>
+        <button class="btn" type="button" onclick="KDS.announceNext()" style="background:#2a1a14;color:#f3dc82;">🔊 Đọc đơn tiếp theo</button>
+      </div>
+      <div class="kds-status" id="kdsStatus">Sẵn sàng. Bấm “Bật mic” để nói, hoặc dùng nút trên thẻ đơn.</div>
+
+      <div class="kds-wrap">
+        <div>
+          <div class="kds-grid" id="kdsGrid"></div>
+        </div>
+        <aside class="kds-side">
+          <h3>Nhật ký hội thoại</h3>
+          <div class="sub">Transcript để demo và debug. Không ghi âm, chỉ lưu text trong phiên.</div>
+          <div class="kds-transcript" id="kdsTranscript"></div>
+          <div class="kds-tips">
+            <strong>Lệnh mẫu</strong><br>
+            <code>đơn tiếp theo</code> · <code>bắt đầu A12</code><br>
+            <code>xong A12</code> · <code>hết sữa</code><br>
+            <code>hoàn tác</code> · <code>tắt mic</code><br><br>
+            Hành động nguy hiểm sẽ hỏi xác nhận. Nếu mic lỗi, dùng nút trên thẻ — demo không bị chặn.
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/staff-guard.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/staff-nav.js"></script>
+<script src="js/dark-mode.js"></script>
+<script src="js/kds.js"></script>
+</body>
+</html>

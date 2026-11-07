@@ -3,7 +3,7 @@
 **Repo:** https://github.com/cappannguyen-0901/cappanwebdemo
 
 Web quán cà phê CAPPAN: đặt bàn theo sơ đồ, gọi món, giỏ hàng, theo dõi đơn, khuyến mãi,
-**thu ngân tại quầy**, 10 trang nhân viên và trợ lý AI tiếng Việt.
+**thu ngân tại quầy**, 12 trang nhân viên và trợ lý AI tiếng Việt.
 
 Bản **v4.2** hoàn thiện từ `Projectweb`: giữ nguyên giao diện, toàn bộ chức năng AI/chat và
 các lớp hiệu ứng sẵn có; bổ sung tầng lõi dùng chung, kiểm thử tự động, đóng gói `dist/`,
@@ -68,11 +68,13 @@ Không có proxy thì trợ lý vẫn trả lời bằng luật cục bộ + KB,
   luồng đặt bàn, không còn nhầm “2 người” thành tên món. Khung chat có mặt trên **mọi trang khách**.
 - **Ô nhập liệu**: chữ **nâu cà phê** trên nền sáng, nâu sáng ấm ở dark mode; chat/tìm kiếm/POS vẫn nền trắng, placeholder nâu xám.
 
-### Nhân viên (10 trang)
+### Nhân viên (12 trang)
 
 | Trang | Việc chính |
 |---|---|
 | `staff-dashboard.html` | Tổng quan ca, **sơ đồ bàn click để xếp khách vãng lai**, đơn/booking đang chạy, **nhật ký hoạt động** |
+| `staff-owner.html` | **Owner Cockpit**: Alert Center, Insight, Recommendation, chat hỏi nhanh |
+| `staff-kds.html` | **KDS bếp + voice**: hàng đợi ưu tiên, 3 chế độ Voice/Screen, push-to-talk |
 | `staff-cashier.html` | **Thu ngân tại quầy**: chọn món, áp mã, tiền mặt/chuyển khoản/thẻ, tính tiền thối, sổ ca |
 | `staff-orders.html` | Xác nhận, chuyển bước, huỷ đơn; **hiển thị ngay** + số lượng theo tab |
 | `staff-bookings.html` | **Đặt bàn hộ khách**, **giữ bàn**, **thu cọc**, check-in, hoàn tất, **khách không đến**, **khách vãng lai** |
@@ -115,14 +117,14 @@ Hoặc `npm run check`. Hiện tại:
 - **Kịch bản**: 8 nhóm test phủ **45 câu khách + 25 câu nhân viên** và quy trình API (xem `docs/BO-KIEM-THU.md`).
 - **Kịch bản báo cáo cho giảng viên**: `docs/KICH-BAN-BAO-CAO.md`.
 - **Báo cáo sản phẩm**: `docs/TONG-KET-SAN-PHAM.md`.
-- **Tổng**: **121 test**; smoke **20 trang** trên Chrome headless.
+- **Tổng**: **128 test**; smoke **23 trang** trên Chrome headless.
 
 ---
 
 ## 4. Cấu trúc
 
 ```
-*.html                 22 trang (source, mở trực tiếp được)
+*.html                 25 trang (source, mở trực tiếp được)
 *.css                  style / theme / dark-mode / staff / chat-panel / card-premium / ui-polish / cashier
 assets/images/         22 ảnh nội bộ (không phụ thuộc Unsplash)
 js/
