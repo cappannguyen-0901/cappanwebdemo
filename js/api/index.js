@@ -1653,7 +1653,8 @@ const API = {
         return code;
       };
       list.forEach(o => {
-        if (!o || o.kitchenCode) return;
+        if (!o) return;
+        if (o.kitchenCode && /^A\d{2,}$/.test(String(o.kitchenCode))) return;
         if (o.status === 'cancelled') return;
         const ks = o.kitchenStatus || 'submitted';
         if (ks === 'served' || ks === 'completed') return;
