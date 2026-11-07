@@ -124,17 +124,19 @@ Alert → Insight → Recommendation
 - Insight: doanh thu, món bán chạy, khung giờ vắng.
 - Recommendation: nhập hàng, mở khu, đổi ca.
 
-Báo cáo email cuối ngày:
+Báo cáo email cuối ngày — chỉ doanh thu và kho:
 
 ```text
 Doanh thu
-Đơn theo service mode
-No-show
-Món hết
-3 việc cần quyết
+Đơn hoàn tất / hủy
+AOV
+Tổng SKU
+Sắp cạn
+Đã hết
+Danh sách nguyên liệu
 ```
 
-> “Demo tạo nội dung email; production gửi qua SMTP/n8n.”
+> “Báo cáo doanh thu có sẵn ở trang Thống kê; chỉ cần thêm phần kho. Demo tạo nội dung email; production gửi qua SMTP/n8n.”
 
 ---
 

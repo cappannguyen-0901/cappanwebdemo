@@ -121,6 +121,13 @@ d.classList.add('no-anim');}catch(e){}})();
           <div id="bookingStats"></div>
         </div>
       </div>
+      <div class="staff-panel" style="margin-top:16px">
+        <div class="panel-header">
+          <h3>📦 Báo cáo kho</h3>
+          <span class="panel-hint" id="inventoryMeta"></span>
+        </div>
+        <div id="inventoryReport"></div>
+      </div>
     </section>
   </div>
 
@@ -404,6 +411,34 @@ function renderStatsPage() {
   try {
     if (typeof ReportEngine !== 'undefined') renderReport(ReportEngine.build(statsRange));
   } catch (e) { console.warn('[stats] report:', e); }
+  renderInventoryReport();
+}
+
+/* ---------- BÁO CÁO KHO ---------- */
+function renderInventoryReport() {
+  const box = document.getElementById('inventoryReport');
+  const meta = document.getElementById('inventoryMeta');
+  if (!box) return;
+  let items = [];
+  try { items = API.ingredients.getAll() || []; } catch (e) {}
+  const out = items.filter(x => Number(x.stock) <= 0);
+  const low = items.filter(x => Number(x.stock) > 0 && Number(x.stock) <= Number(x.minStock));
+  if (meta) meta.textContent = `${items.length} SKU · ${low.length} sắp cạn · ${out.length} đã hết`;
+  if (!items.length) {
+    box.innerHTML = '<p class="empty-note">Chưa có dữ liệu kho.</p>';
+    return;
+  }
+  const rows = items.map(x => {
+    const isOut = Number(x.stock) <= 0;
+    const isLow = !isOut && Number(x.stock) <= Number(x.minStock);
+    const status = isOut ? 'Hết' : (isLow ? 'Sắp cạn' : 'Ổn');
+    const cls = isOut ? 'out' : (isLow ? 'low' : '');
+    return `<div class="mini-row" style="border-left:3px solid ${isOut ? '#c62828' : isLow ? '#c58a00' : '#2e7d32'};padding-left:8px;">
+      <span>${esc(x.name)} <small style="color:#8b7160">· ${esc(x.unit)}</small></span>
+      <strong>${esc(x.stock)} / ${esc(x.minStock)} <small style="color:#8b7160">${status}</small></strong>
+    </div>`;
+  }).join('');
+  box.innerHTML = rows;
 }
 
 /* ---------- BÁO CÁO CUỐI KỲ + GỢI Ý ---------- */

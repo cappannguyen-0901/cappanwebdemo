@@ -148,7 +148,7 @@ for i, (h, b, c) in enumerate(items):
     text(s, 'Từ dữ liệu thật trong demo' if i < 2 else 'Đồng ý / Từ chối · audit', x + 0.26, 4.65, 3.2, 0.3, 9, MUTED)
 card(s, 0.65, 5.55, 12.0, 1.05, CARD, GOLD)
 text(s, '📧 BÁO CÁO EMAIL CUỐI NGÀY', 0.9, 5.7, 4.5, 0.28, 9, GOLD, True)
-text(s, 'Doanh thu · đơn theo mode · no-show · món hết · 3 việc cần quyết', 0.9, 6.0, 9.5, 0.35, 11, CREAM)
+text(s, 'Doanh thu · đơn · AOV · SKU · sắp cạn · đã hết', 0.9, 6.0, 9.5, 0.35, 11, CREAM)
 text(s, 'Demo: tạo nội dung email · Production: SMTP/n8n', 9.3, 5.95, 3.1, 0.3, 8.5, MUTED, align=PP_ALIGN.RIGHT)
 footer(s, 5)
 
