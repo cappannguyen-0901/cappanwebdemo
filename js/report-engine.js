@@ -154,34 +154,48 @@
     },
 
     summaryLines(r) {
-      const inv = r.inventory || { total: 0, low: [], out: [] };
-      const lowNames = inv.low.map(x => x.name).filter(Boolean);
-      const outNames = inv.out.map(x => x.name).filter(Boolean);
-      return [
+      const lines = [
         `Kỳ: ${r.label} (${new Date(r.from).toLocaleDateString('vi-VN')} – ${new Date(r.to).toLocaleDateString('vi-VN')})`,
-        `DOANH THU: ${money(r.revenue)} (${r.deltaPct >= 0 ? '+' : ''}${r.deltaPct}% so với kỳ trước)`,
-        `Đơn hoàn tất: ${r.completed}/${r.orders} · Hủy: ${r.cancelled} · AOV: ${money(r.aov)}`,
-        `KHO: ${inv.total} SKU · ${inv.low.length} sắp cạn · ${inv.out.length} đã hết`,
-        `Sắp cạn: ${lowNames.length ? lowNames.join(', ') : 'Không'}`,
-        `Đã hết: ${outNames.length ? outNames.join(', ') : 'Không'}`
+        `Doanh thu: ${money(r.revenue)} (${r.deltaPct >= 0 ? '+' : ''}${r.deltaPct}% so với kỳ trước)`,
+        `Đơn hoàn tất: ${r.completed}/${r.orders} · Hủy: ${r.cancelled}`,
+        `AOV: ${money(r.aov)}`,
+        `Kênh: giao hàng ${money(r.byChannel.delivery)} · tại quầy ${money(r.byChannel.pos)}`,
+        `Booking: ${r.bookings.active} hoạt động · ${r.bookings.held} đang giữ · ${r.bookings.seated} đang ngồi · no-show ${r.bookings.no_show}`,
+        `Cọc: đã thu ${money(r.bookings.depositCollected)} · chờ thu ${money(r.bookings.depositPending)}`,
+        `Lấp bàn: ${r.occupancy}%`,
+        `Top món: ${r.top.length ? r.top.map(x => `${x.name} (${x.qty})`).join(', ') : 'chưa có'}`
       ];
+      if (r.period === 'today') {
+        const inv = r.inventory || { total: 0, low: [], out: [] };
+        const lowNames = inv.low.map(x => x.name).filter(Boolean);
+        const outNames = inv.out.map(x => x.name).filter(Boolean);
+        lines.push('', `Kho hôm nay: ${inv.total} SKU · ${inv.low.length} sắp cạn · ${inv.out.length} đã hết`);
+        lines.push(`Sắp cạn: ${lowNames.length ? lowNames.join(', ') : 'Không'}`);
+        lines.push(`Đã hết: ${outNames.length ? outNames.join(', ') : 'Không'}`);
+      }
+      return lines;
     },
 
     toText(r) {
-      const lines = ['CAPPAN — BÁO CÁO DOANH THU & KHO', ''];
+      const lines = ['CAPPAN — BÁO CÁO TÀI CHÍNH & VẬN HÀNH', ''];
       lines.push(...this.summaryLines(r));
+      lines.push('', 'GỢI Ý HƯỚNG ĐI TIẾP THEO:');
+      r.insights.forEach((x, i) => lines.push(`${i + 1}. ${x.title}: ${x.text}`));
       lines.push('', '— Báo cáo tự động từ CAPPAN Demo.');
       return lines.join('\n');
     },
 
     toHtml(r) {
       const lines = this.summaryLines(r).map(x => `<li>${x.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</li>`).join('');
+      const insights = r.insights.map(x => `<div style="margin:10px 0;padding:10px 12px;border:1px solid #E7C873;border-radius:10px;background:#FFFDF7"><strong>${x.icon} ${x.title}</strong><div style="font-size:13px;color:#5D4037">${x.text}</div></div>`).join('');
       return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Báo cáo ${r.label}</title></head>
 <body style="margin:0;background:#F6EFE3;font-family:Arial,sans-serif;color:#3E2723">
 <div style="max-width:720px;margin:24px auto;background:#FFFDF7;border:1.5px solid #E7C873;border-radius:18px;padding:24px;box-shadow:0 10px 28px rgba(111,78,55,.12)">
-<h1 style="font-family:Georgia,serif;color:#4A2E20;margin:0 0 4px">CAPPAN — Báo cáo doanh thu &amp; kho</h1>
+<h1 style="font-family:Georgia,serif;color:#4A2E20;margin:0 0 4px">CAPPAN — Báo cáo ${r.label}</h1>
 <p style="color:#8A6A55;margin:0 0 18px">${new Date(r.from).toLocaleDateString('vi-VN')} – ${new Date(r.to).toLocaleDateString('vi-VN')}</p>
 <ul style="line-height:1.8;padding-left:18px">${lines}</ul>
+<h2 style="font-family:Georgia,serif;color:#4A2E20;margin-top:22px">Gợi ý hướng đi</h2>
+${insights}
 <p style="font-size:12px;color:#8A6A55;margin-top:20px">Báo cáo từ CAPPAN Demo · không phải báo cáo tài chính kiểm toán.</p>
 </div></body></html>`;
     },
@@ -197,11 +211,25 @@
         ['Hoàn tất', r.completed],
         ['Hủy', r.cancelled],
         ['AOV', r.aov],
+        ['Giao hàng', r.byChannel.delivery],
+        ['Tại quầy', r.byChannel.pos],
+        ['Booking hoạt động', r.bookings.active],
+        ['Đang giữ', r.bookings.held],
+        ['No-show', r.bookings.no_show],
+        ['Cọc đã thu', r.bookings.depositCollected],
+        ['Cọc chờ thu', r.bookings.depositPending],
+        ['Lấp bàn (%)', r.occupancy],
         [],
-        ['Kho', 'Tồn', 'Ngưỡng', 'Trạng thái']
+        ['Top món', 'Số lượng', 'Doanh thu']
       ];
-      const inv = r.inventory || { items: [] };
-      inv.items.forEach(x => rows.push([x.name, x.stock, x.minStock, x.status]));
+      r.top.forEach(x => rows.push([x.name, x.qty, x.revenue]));
+      if (r.period === 'today') {
+        const inv = r.inventory || { items: [] };
+        rows.push([], ['Kho hôm nay', 'Tồn', 'Ngưỡng', 'Trạng thái']);
+        inv.items.forEach(x => rows.push([x.name, x.stock, x.minStock, x.status]));
+      }
+      rows.push([], ['Gợi ý', 'Nội dung']);
+      r.insights.forEach(x => rows.push([x.title, x.text]));
       return '\uFEFF' + rows.map(row => row.map(cell => `"${String(cell == null ? '' : cell).replace(/"/g, '""')}"`).join(',')).join('\r\n');
     },
 
