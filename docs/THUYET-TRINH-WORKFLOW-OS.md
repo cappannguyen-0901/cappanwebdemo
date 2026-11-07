@@ -101,17 +101,17 @@ Nói:
 Mở `staff-kds.html?as=0900000002`.
 
 - Bấm **“Nạp 3 đơn demo”**.
-- Bấm **“Đọc đơn tiếp theo”** — AI TTS đọc.
+- Mic tự bật khi vào trang. Bấm **“Đọc đơn tiếp theo”** — AI TTS đọc kèm số bàn.
 - Bấm **Bắt đầu** / **Xong** trên thẻ — hoặc nói:
   - “Đơn tiếp theo”
-  - “Xong A12”
+  - “Xong A12” → AI đọc “A12, bàn A1”
   - “Hết sữa” → AI đọc danh sách món bị khóa, hỏi xác nhận.
 - Chỉ vào 3 chế độ: Voice Only / Voice + Screen / Screen Only.
 - Nếu AI đọc sai giọng: mở dropdown **Giọng**, chọn giọng `vi-VN` (Microsoft HoaiMy/NamMinh hoặc Google Tiếng Việt), bấm **Test**.
 
 Nói:
 
-> “Voice dùng Web Speech API. Push-to-talk, whitelist, 2-step confirm, undo. Nếu mic lỗi, vẫn bấm nút — demo không bị chặn. Nếu máy chưa có giọng tiếng Việt, em chọn trong dropdown hoặc cài Vietnamese voice trong Windows.”
+> “Voice dùng Web Speech API. Mic tự bật và tự khởi động lại khi trình duyệt ngắt; chỉ tắt bằng nút hoặc lệnh ‘tắt mic’. Whitelist, 2-step confirm, undo. Nếu máy chưa có giọng tiếng Việt, em chọn Google TTS hoặc cài Vietnamese voice trong Windows.”
 
 ### Act 3 — Chủ quán (2 phút)
 
@@ -190,7 +190,7 @@ Câu chốt:
 
 ### “Voice có thật không?”
 
-> “Có, ở mức demo: Web Speech API STT + TTS. Production cần Vbee/Google STT, headset và backend. Em chọn push-to-talk vì quán ồn và cần riêng tư.”
+> “Có, ở mức demo: Web Speech API STT + TTS. Mic tự bật, tự khởi động lại; chỉ tắt bằng nút/lệnh. Production cần Vbee/Google STT, headset và backend.”
 
 ### “AI có bịa không?”
 

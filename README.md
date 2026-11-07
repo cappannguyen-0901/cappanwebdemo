@@ -74,7 +74,7 @@ Không có proxy thì trợ lý vẫn trả lời bằng luật cục bộ + KB,
 |---|---|
 | `staff-dashboard.html` | Tổng quan ca, **sơ đồ bàn click để xếp khách vãng lai**, đơn/booking đang chạy, **nhật ký hoạt động** |
 | `staff-owner.html` | **Owner Cockpit**: Alert Center, Insight, Recommendation, chat hỏi nhanh |
-| `staff-kds.html` | **KDS bếp + voice**: hàng đợi ưu tiên, 3 chế độ Voice/Screen, push-to-talk |
+| `staff-kds.html` | **KDS bếp + voice**: hàng đợi ưu tiên, 3 chế độ Voice/Screen, mic tự bật, đọc số bàn |
 | `staff-cashier.html` | **Thu ngân tại quầy**: chọn món, áp mã, tiền mặt/chuyển khoản/thẻ, tính tiền thối, sổ ca |
 | `staff-orders.html` | Xác nhận, chuyển bước, huỷ đơn; **hiển thị ngay** + số lượng theo tab |
 | `staff-bookings.html` | **Đặt bàn hộ khách**, **giữ bàn**, **thu cọc**, check-in, hoàn tất, **khách không đến**, **khách vãng lai** |

@@ -1,7 +1,7 @@
 /* ============================================================
    KDS + AMBIENT VOICE (demo)
    - Hàng đợi ưu tiên theo kênh + thời gian chờ
-   - Web Speech API: STT push-to-talk + TTS
+   - Web Speech API: STT mic tự bật + TTS tiếng Việt
    - 3 chế độ: Voice Only / Voice + Screen / Screen Only
    - Fallback nút bấm nếu mic lỗi
 ============================================================ */
@@ -16,6 +16,9 @@
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition = null;
   let listening = false;
+  let micOn = false;
+  let micStarting = false;
+  let micManualOff = false;
   let mode = 'both';
   let pending = null;
   let lastAction = null;
@@ -208,9 +211,11 @@
   }
 
   function describe(o) {
-    const svc = SERVICE_LABEL[o.serviceType] || 'Tại bàn';
-    const where = o.tableId ? ` bàn ${o.tableId}` : (o.serviceType === 'delivery' ? ' giao hàng' : '');
-    return `${orderLabel(o)}, ${svc}${where}: ${itemText(o)}.`;
+    const code = orderLabel(o);
+    if (o.serviceType === 'delivery') return `${code}, giao hàng: ${itemText(o)}.`;
+    if (o.serviceType === 'takeaway') return `${code}, mang đi: ${itemText(o)}.`;
+    const table = o.tableId ? `bàn ${o.tableId}` : 'chưa gán bàn';
+    return `${code}, ${table}: ${itemText(o)}.`;
   }
 
   function render() {
@@ -257,10 +262,9 @@
     mode = ['voice', 'both', 'screen'].includes(next) ? next : 'both';
     document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
     if (mode === 'screen') {
-      stopListening();
-      setStatusLine('Chế độ Screen Only: AI không nói, chỉ hiện màn hình.');
+      setStatusLine('Screen Only: AI không nói, nhưng mic vẫn nghe lệnh. Tắt mic bằng nút hoặc nói “tắt mic”.');
     } else {
-      setStatusLine(mode === 'voice' ? 'Voice Only: AI nói và nghe. Dùng tai nghe để tránh vọng.' : 'Voice + Screen: AI nói và hiện xác nhận.');
+      setStatusLine(mode === 'voice' ? 'Voice Only: AI nói và nghe. Mic tự động bật; dùng tai nghe để tránh vọng.' : 'Voice + Screen: AI nói và hiện xác nhận. Mic tự động bật.');
     }
     log('sys', 'Chuyển chế độ: ' + (mode === 'voice' ? 'Voice Only' : mode === 'both' ? 'Voice + Screen' : 'Screen Only'));
   }
@@ -268,8 +272,10 @@
   function setMicButton() {
     const b = $('kdsMic');
     if (!b) return;
-    b.classList.toggle('listening', listening);
-    b.textContent = listening ? '⏹ Đang nghe…' : '🎙 Bật mic';
+    b.classList.toggle('listening', micOn && listening);
+    b.textContent = micOn
+      ? (listening ? '⏹ Tắt mic — đang nghe' : '⏳ Đang khởi động mic…')
+      : '🎙 Bật mic';
   }
 
   function startListening() {
@@ -278,15 +284,15 @@
       log('sys', 'Không có SpeechRecognition — dùng fallback nút bấm.');
       return;
     }
-    if (mode === 'screen') {
-      toast('Đang ở Screen Only. Chuyển Voice + Screen để nói.', '#856404');
-      return;
-    }
-    if (listening) return;
+    if (listening || micStarting) return;
+    micOn = true;
+    micManualOff = false;
+    micStarting = true;
+    setMicButton();
     if (!recognition) {
       recognition = new SR();
       recognition.lang = 'vi-VN';
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
       recognition.onresult = e => {
@@ -298,34 +304,54 @@
         const msg = e.error === 'not-allowed' ? 'Chưa cấp quyền micro. Bấm cho phép trên trình duyệt.' : 'Lỗi mic: ' + e.error;
         setStatusLine(msg);
         log('sys', msg);
-        toast(msg, '#c62828');
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          micOn = false;
+          micStarting = false;
+          setMicButton();
+        }
       };
-      recognition.onend = () => { listening = false; setMicButton(); };
+      recognition.onend = () => {
+        listening = false;
+        micStarting = false;
+        setMicButton();
+        // Mic luôn bật: tự khởi động lại sau mỗi lần trình duyệt tự ngắt.
+        if (micOn) {
+          setTimeout(() => {
+            if (micOn && !listening && !micStarting) startListening();
+          }, 450);
+        }
+      };
     }
     try {
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
       recognition.start();
       listening = true;
+      micStarting = false;
       setMicButton();
-      setStatusLine('Đang nghe… nói ngắn: “đơn tiếp theo”, “xong A12”, “hết sữa”.');
+      setStatusLine('Mic đang bật. Nói: “đơn tiếp theo”, “xong A12”, “hết sữa”, “tắt mic”.');
     } catch (e) {
       listening = false;
+      micStarting = false;
       setMicButton();
       log('sys', 'Không khởi động được mic: ' + (e.message || e));
     }
   }
 
-  function stopListening() {
-    try { if (recognition) recognition.stop(); } catch (e) {}
+  function stopListening(manual) {
+    micOn = false;
+    micStarting = false;
+    micManualOff = manual !== false;
+    try { if (recognition) recognition.abort(); } catch (e) {}
     listening = false;
     setMicButton();
+    if (manual !== false) {
+      setStatusLine('Đã tắt mic. Bấm “Bật mic” để bật lại.');
+      log('sys', 'Đã tắt mic.');
+    }
   }
 
   function toggleMic() {
-    if (listening) {
-      stopListening();
-      setStatusLine('Đã tắt mic.');
-      log('sys', 'Đã tắt mic.');
+    if (micOn || listening) {
+      stopListening(true);
     } else {
       startListening();
     }
@@ -354,7 +380,7 @@
       const o = API.orders.getById(p.orderId);
       if (!o) { speak('Không tìm thấy đơn.'); return; }
       if (API.orders.cancel(p.orderId)) {
-        speak(`Đã hủy ${orderLabel(o)}.`);
+        speak(`Đã hủy ${orderLabel(o)}${o.tableId ? ', bàn ' + o.tableId : ''}.`);
         lastAction = null;
         render();
       } else {
@@ -442,7 +468,7 @@
       const o = findQueueOrder(code);
       if (!o) { speak('Không tìm thấy đơn để hủy.'); return; }
       pending = { type: 'cancel', orderId: o.id };
-      speak(`Đơn ${orderLabel(o)}, ${itemText(o)}. Xác nhận hủy?`);
+      speak(`Đơn ${orderLabel(o)}${o.tableId ? ', bàn ' + o.tableId : ''}, ${itemText(o)}. Xác nhận hủy?`);
       return;
     }
 
@@ -457,7 +483,8 @@
     if (!r) { speak('Không cập nhật được đơn.'); return; }
     lastAction = { type: 'status', orderId: id, prev };
     const label = STATUS_LABEL[status] || status;
-    speak(`Đã ${label.toLowerCase()} ${orderLabel(o)}.`);
+    const where = o.tableId ? `, bàn ${o.tableId}` : '';
+    speak(`Đã ${label.toLowerCase()} ${orderLabel(o)}${where}.`);
     render();
   }
 
@@ -557,8 +584,12 @@
     setInterval(render, 2500);
     window.addEventListener('cappan:sync', scheduleRender);
     window.addEventListener('cappan:automation', scheduleRender);
-    log('sys', 'KDS sẵn sàng. Bấm “Bật mic” hoặc dùng nút trên thẻ.');
+    log('sys', 'KDS sẵn sàng.');
     log('sys', voiceStatus());
+    // Mic luôn bật: tự xin quyền và khởi động sau khi trang ổn định.
+    setTimeout(() => {
+      if (!micOn && !listening && !micManualOff) startListening();
+    }, 900);
   }
 
   window.KDS = {

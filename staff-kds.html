@@ -100,7 +100,7 @@
       <div class="staff-header">
         <div>
           <h1 class="staff-title">🎙 KDS bếp &amp; điều phối</h1>
-          <p class="staff-sub">Hàng đợi ưu tiên theo kênh + thời gian chờ. Nói để cập nhật, không cần rời mắt khỏi ly.</p>
+          <p class="staff-sub">Hàng đợi ưu tiên theo kênh + thời gian chờ. Mic tự bật khi vào trang; tắt bằng nút hoặc nói “tắt mic”.</p>
         </div>
       </div>
 
@@ -110,7 +110,7 @@
           <button type="button" data-mode="both" class="active" onclick="KDS.setMode('both')">Voice + Screen</button>
           <button type="button" data-mode="screen" onclick="KDS.setMode('screen')">Screen Only</button>
         </div>
-        <button class="kds-mic" id="kdsMic" type="button" onclick="KDS.toggleMic()">🎙 Bật mic</button>
+        <button class="kds-mic" id="kdsMic" type="button" onclick="KDS.toggleMic()">🎙 Mic tự bật</button>
         <label class="kds-voice">Giọng
           <select id="kdsVoice" aria-label="Chọn giọng đọc" onchange="KDS.setVoice(this.value)"></select>
           <button type="button" onclick="KDS.testVoice()">🔊 Test</button>
@@ -118,7 +118,7 @@
         <button class="btn" type="button" onclick="KDS.loadDemoOrders()" style="background:#f4e8d8;color:#5b402b;border:1px solid #d9c8b5;">+ Nạp 3 đơn demo</button>
         <button class="btn" type="button" onclick="KDS.announceNext()" style="background:#2a1a14;color:#f3dc82;">🔊 Đọc đơn tiếp theo</button>
       </div>
-      <div class="kds-status" id="kdsStatus">Sẵn sàng. Bấm “Bật mic” để nói, hoặc dùng nút trên thẻ đơn.</div>
+      <div class="kds-status" id="kdsStatus">Mic tự bật khi vào trang. Chờ quyền micro, hoặc bấm “Bật mic”.</div>
 
       <div class="kds-wrap">
         <div>
