@@ -14,16 +14,16 @@ test('TableSession: mở phiên, join lại cùng bàn, bill cộng dồn', () =
   assert.equal(a.session.tableId, 'A1');
 
   const order = api.orders.create({
-    serviceType: 'dine_in',
+    serviceType: 'table_service',
     source: 'qr_table',
     tableId: 'A1',
     tableSessionId: a.session.id,
-    paymentMethod: 'pay_later',
-    paymentStatus: 'pay_later_open',
+    paymentMethod: 'mock_qr',
+    paymentStatus: 'paid',
     items: [{ itemId: 'M003', qty: 1, size: 'M' }]
   });
   assert.ok(order && order.id);
-  assert.equal(order.serviceType, 'dine_in');
+  assert.equal(order.serviceType, 'table_service');
   assert.equal(order.source, 'qr_table');
   assert.equal(order.tableSessionId, a.session.id);
   assert.match(order.kitchenCode, /^A\d+$/);
@@ -43,11 +43,11 @@ test('KDS queue + update trạng thái bếp', () => {
   const api = fresh();
   const joined = api.tableSessions.join('A2');
   const order = api.orders.create({
-    serviceType: 'dine_in',
+    serviceType: 'table_service',
     source: 'qr_table',
     tableId: 'A2',
     tableSessionId: joined.session.id,
-    paymentMethod: 'pay_later',
+    paymentMethod: 'mock_qr',
     items: [{ itemId: 'M003', qty: 1, size: 'M' }]
   });
   const queue = api.orders.getKdsQueue();
@@ -68,11 +68,11 @@ test('TableSession settle: đóng phiên và đánh dấu đã thanh toán', () 
   const api = fresh();
   const joined = api.tableSessions.join('A3');
   const order = api.orders.create({
-    serviceType: 'dine_in',
+    serviceType: 'table_service',
     source: 'qr_table',
     tableId: 'A3',
     tableSessionId: joined.session.id,
-    paymentMethod: 'pay_later',
+    paymentMethod: 'mock_qr',
     items: [{ itemId: 'M003', qty: 1, size: 'M' }]
   });
   const settled = api.tableSessions.settle(joined.session.id);
@@ -92,7 +92,7 @@ test('POS sale vẫn vào KDS với source counter_pos', () => {
     paymentMethod: 'cash',
     cashReceived: 100000
   });
-  assert.equal(sale.serviceType, 'dine_in');
+  assert.equal(sale.serviceType, 'counter_pickup');
   assert.equal(sale.source, 'counter_pos');
   assert.equal(sale.kitchenStatus, 'submitted');
   assert.equal(api.orders.getKdsQueue().some(o => o.id === sale.id), true);

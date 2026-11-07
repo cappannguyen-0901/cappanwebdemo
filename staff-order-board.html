@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Order Board — CAPPAN Staff</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN Order Board — hàng đợi đơn đã thanh toán cho quầy pha chế.">
+<meta property="og:title" content="CAPPAN – Coffee &amp; More">
+<meta property="og:description" content="CAPPAN – Coffee &amp; More · Home Study. Đặt bàn, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="staff.css">
+<link rel="stylesheet" href="dark-mode.css">
+<link rel="stylesheet" href="card-premium.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<style>
+  .ob-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .ob-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .ob-col { background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 14px; padding: 12px; min-height: 260px; }
+  .ob-col h3 { margin: 0 0 3px; font-size: 13px; color: #2b1f18; }
+  .ob-col .sub { font-size: 10.5px; color: #8b7160; margin-bottom: 9px; }
+  .ob-card { border: 1px solid #efe3d5; border-left: 4px solid #c9a227; border-radius: 10px; padding: 9px 10px; margin-bottom: 8px; background: #fffdf9; }
+  .ob-card.counter_pickup { border-left-color: #b36b00; }
+  .ob-card.table_service { border-left-color: #23662a; }
+  .ob-card.delivery { border-left-color: #b3261e; }
+  .ob-card.takeaway { border-left-color: #6f4e37; }
+  .ob-top { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
+  .ob-code { font-family: Georgia, serif; font-weight: 800; font-size: 19px; color: #2b1f18; }
+  .ob-service { font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #8b7160; }
+  .ob-meta { font-size: 10px; color: #8b7160; margin: 3px 0 6px; }
+  .ob-items { margin: 0 0 7px; padding: 0; list-style: none; }
+  .ob-items li { font-size: 11px; color: #3e2a1f; padding: 2px 0; border-bottom: 1px dashed #efe3d5; display: flex; justify-content: space-between; gap: 5px; }
+  .ob-items li:last-child { border: 0; }
+  .ob-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .ob-actions button { border: 1px solid #d9c8b5; border-radius: 6px; background: #fffdf9; color: #5b402b; font-size: 10px; padding: 4px 7px; cursor: pointer; }
+  .ob-actions button.primary { background: #2a1a14; color: #f3dc82; border-color: #2a1a14; font-weight: 700; }
+  .ob-empty { color: #8b7160; font-size: 11px; padding: 16px 0; text-align: center; }
+  @media (max-width: 1000px) { .ob-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-page="staff-order-board">
+
+<header class="app-header">
+  <a class="logo" href="staff-dashboard.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Staff Panel</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav"></nav>
+</header>
+
+<div class="dashboard-layout" id="dashboardLayout">
+  <div class="dashboard-main">
+    <section class="section">
+      <div class="staff-header">
+        <div>
+          <h1 class="staff-title">🧾 Order Board</h1>
+          <p class="staff-sub">Chỉ đơn đã thanh toán. Barista tự quyết thứ tự; quản lý ca có thể đổi ưu tiên.</p>
+        </div>
+      </div>
+      <div class="ob-bar">
+        <button class="btn" type="button" onclick="OrderBoard.loadDemo()">+ Nạp 3 đơn demo</button>
+        <a class="btn" href="staff-runner.html" style="background:#f4e8d8;color:#5b402b;text-decoration:none;">🏃 Runner View</a>
+        <span style="font-size:11px;color:#8b7160">Đơn chưa thanh toán sẽ không lên bảng.</span>
+      </div>
+      <div class="ob-grid">
+        <section class="ob-col"><h3>MỚI</h3><div class="sub">Chờ bắt đầu</div><div id="obNew"></div></section>
+        <section class="ob-col"><h3>ĐANG LÀM</h3><div class="sub">Barista đang pha</div><div id="obDoing"></div></section>
+        <section class="ob-col"><h3>SẴN SÀNG</h3><div class="sub">Chờ runner / gọi số</div><div id="obReady"></div></section>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/staff-guard.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/staff-nav.js"></script>
+<script src="js/dark-mode.js"></script>
+<script src="js/order-board.js"></script>
+</body>
+</html>

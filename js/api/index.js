@@ -678,6 +678,7 @@ const API = {
       };
       list.unshift(session);
       if (!this._write(list)) return { ok: false, error: 'Không lưu được phiên bàn' };
+      try { if (API.seats) API.seats.setStatus(table, 'occupied'); } catch (e) {}
       try { _audit({ action: 'table.session_open', targetId: session.id, ok: true }); } catch (e) {}
       return { ok: true, session, existing: false };
     },
@@ -730,6 +731,8 @@ const API = {
         this._write(list);
       }
       this.setCurrent(null);
+      try { if (API.seats && session.tableId) API.seats.setStatus(session.tableId, 'cleaning'); } catch (e) {}
+      try { if (API.seats && session.tableId) API.seats.rotateCode(session.tableId); } catch (e) {}
       try { _audit({ action: 'table.session_close', targetId: id, ok: true }); } catch (e) {}
       return { ok: true, total: bill.total, orderCount: bill.orderCount, session: list[i] };
     }
@@ -934,6 +937,44 @@ const API = {
     getById(id) {
       const found = this.getAll().find(s => s.id === id);
       return found || null;
+    },
+
+    setStatus(id, status) {
+      const map = this._getStateMap();
+      if (status === 'available') delete map[id];
+      else map[id] = status;
+      this._setStateMap(map);
+      return this.getById(id);
+    },
+
+    getStatus(id) {
+      const s = this.getById(id);
+      return s ? s.status : 'available';
+    },
+
+    _getCodes() {
+      try { return JSON.parse(localStorage.getItem('cappan_table_codes') || '{}'); }
+      catch { return {}; }
+    },
+
+    getCode(id) {
+      const codes = this._getCodes();
+      if (!codes[id]) {
+        codes[id] = '1234'; // mã demo khởi tạo; đổi sau khi dọn bàn
+        storeSet('cappan_table_codes', JSON.stringify(codes));
+      }
+      return codes[id];
+    },
+
+    verifyCode(id, code) {
+      return String(code || '') === String(this.getCode(id));
+    },
+
+    rotateCode(id) {
+      const codes = this._getCodes();
+      codes[id] = String(Math.floor(1000 + Math.random() * 9000));
+      storeSet('cappan_table_codes', JSON.stringify(codes));
+      return codes[id];
     },
 
     getByFloor(fId) {
@@ -1538,6 +1579,18 @@ const API = {
       }
     },
 
+    _nextPickupCode() {
+      const list = this.getAll();
+      const used = new Set(list.map(o => o && o.pickupCode).filter(Boolean));
+      let n = 1;
+      let code = '';
+      do {
+        code = 'P' + String(n).padStart(2, '0');
+        n++;
+      } while (used.has(code));
+      return code;
+    },
+
     _nextKdsCode(list) {
       const src = Array.isArray(list) ? list : this.getAll();
       const used = new Set(src.map(o => o && o.kitchenCode).filter(Boolean));
@@ -1560,23 +1613,25 @@ const API = {
         return _setLastError('Bạn không có quyền tạo đơn cho tài khoản khác');
       }
 
-      const serviceType = ['dine_in', 'takeaway', 'delivery'].includes(data.serviceType)
-        ? data.serviceType : 'delivery';
-      const source = data.source || (serviceType === 'dine_in' ? 'counter_pos' : 'web');
+      const rawType = data.serviceType === 'dine_in' ? 'table_service' : data.serviceType;
+      const serviceType = ['counter_pickup', 'table_service', 'takeaway', 'delivery'].includes(rawType)
+        ? rawType : 'delivery';
+      const source = data.source || (serviceType === 'table_service' ? 'counter_pos' : 'web');
       let tableId = data.tableId ? String(data.tableId).toUpperCase() : null;
       let tableSessionId = data.tableSessionId || null;
-      if (serviceType === 'dine_in' && tableId && !tableSessionId && typeof API.tableSessions !== 'undefined') {
+      if (serviceType !== 'table_service') tableId = null;
+      if (serviceType === 'table_service' && tableId && !tableSessionId && typeof API.tableSessions !== 'undefined') {
         const joined = API.tableSessions.join(tableId);
         if (joined && joined.ok) tableSessionId = joined.session.id;
       }
-      const paymentMethod = data.paymentMethod || 'pay_later';
-      const paymentStatus = data.paymentStatus || (
-        paymentMethod === 'pay_later' ? 'pay_later_open' : (data.paid ? 'paid' : 'unpaid')
-      );
+      const paymentMethod = data.paymentMethod || 'mock_qr';
+      const paymentStatus = data.paymentStatus || 'paid';
+      const pickupCode = (serviceType === 'counter_pickup' || serviceType === 'takeaway')
+        ? (data.pickupCode || this._nextPickupCode()) : null;
 
       const list = this.getAll();
-      const shipping = (serviceType === 'dine_in' || serviceType === 'takeaway') ? 0 : quote.shipping;
-      const total = (serviceType === 'dine_in' || serviceType === 'takeaway')
+      const shipping = (serviceType === 'table_service' || serviceType === 'counter_pickup' || serviceType === 'takeaway') ? 0 : quote.shipping;
+      const total = (serviceType === 'table_service' || serviceType === 'counter_pickup' || serviceType === 'takeaway')
         ? Math.max(0, quote.subtotal - quote.discount)
         : quote.total;
       const o = {
@@ -1600,6 +1655,7 @@ const API = {
         step: 0,
         kitchenStatus: 'submitted',
         kitchenCode: this._nextKdsCode(),
+        pickupCode,
         paymentMethod,
         paymentStatus,
         createdAt: new Date().toISOString()
@@ -1663,12 +1719,13 @@ const API = {
       });
       if (changed) storeSet(STORAGE_KEYS.orders, JSON.stringify(list));
       return list
-        .filter(o => o && o.status !== 'cancelled' &&
+        .filter(o => o && o.status !== 'cancelled' && o.paymentStatus === 'paid' &&
           !['served', 'cancelled'].includes(o.kitchenStatus) &&
           (o.kitchenStatus || 'submitted') !== 'completed')
         .map(o => {
           const age = Math.max(0, (now - new Date(o.createdAt || 0).getTime()) / 60000);
-          const base = o.serviceType === 'delivery' ? 30 : o.serviceType === 'takeaway' ? 20 : 10;
+          const base = o.serviceType === 'delivery' ? 30 : o.serviceType === 'takeaway' ? 20 :
+            o.serviceType === 'counter_pickup' ? 15 : 10;
           return { ...o, ageMinutes: Math.round(age), priorityScore: base + age };
         })
         .sort((a, b) => b.priorityScore - a.priorityScore);
@@ -2328,12 +2385,13 @@ const API = {
       const sale = {
         id: 'POS' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
         userId: data.customerId || null,
-        serviceType: 'dine_in',
+        serviceType: 'counter_pickup',
         source: 'counter_pos',
-        tableId: data.tableId ? String(data.tableId).toUpperCase() : null,
-        tableSessionId: data.tableSessionId || null,
+        tableId: null,
+        tableSessionId: null,
         kitchenStatus: 'submitted',
         kitchenCode: API.orders._nextKdsCode(),
+        pickupCode: API.orders._nextPickupCode(),
         paymentStatus: 'paid',
         channel: 'pos',
         items: quote.lines,

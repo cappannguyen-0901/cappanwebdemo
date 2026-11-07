@@ -236,8 +236,8 @@
 
     const change = Number(sale.change) || 0;
     showToast(change > 0
-      ? `✓ Đã thu ${money(sale.total)} · thối ${money(change)} · ${sale.id}`
-      : `✓ Đã thu ${money(sale.total)} · ${sale.id}`);
+      ? `✓ Đã thu ${money(sale.total)} · thối ${money(change)} · ${sale.pickupCode || sale.id}`
+      : `✓ Đã thu ${money(sale.total)} · ${sale.pickupCode || sale.id}`);
     clearBill();
     renderRecent();
     if (typeof renderMenu === 'function') renderMenu();

@@ -122,6 +122,24 @@
       $('tblSub').textContent = `Không tìm thấy bàn ${tableId}. Hãy quét lại QR hoặc gọi nhân viên.`;
       return;
     }
+    if (seat.status === 'cleaning') {
+      $('tblTitle').textContent = 'Bàn đang dọn';
+      $('tblSub').textContent = 'Bàn này vừa có khách rời. Vui lòng chọn bàn khác hoặc gọi nhân viên.';
+      return;
+    }
+    const active = (API.tableSessions.getAll ? API.tableSessions.getAll() : [])
+      .find(s => s.tableId === tableId && s.status === 'active');
+    if (!active) {
+      let code = params.get('code') || '';
+      if (!code) {
+        code = window.prompt(`Nhập mã 4 số trên bàn ${tableId}:`, '') || '';
+      }
+      if (!API.seats.verifyCode(tableId, code)) {
+        $('tblTitle').textContent = 'Sai mã bàn';
+        $('tblSub').textContent = 'Mã bàn không đúng. Quét lại QR trên bàn hoặc gọi nhân viên.';
+        return;
+      }
+    }
     const joined = API.tableSessions.join(tableId);
     if (!joined || !joined.ok) {
       $('tblSub').textContent = joined && joined.error ? joined.error : 'Không mở được phiên bàn.';
@@ -130,7 +148,7 @@
     session = joined.session;
     API.tableSessions.setCurrent(session);
     $('tblTitle').textContent = 'Bàn ' + tableId;
-    $('tblSub').textContent = `Bạn đang ngồi tại bàn ${tableId}. Gọi món, gọi thêm — bill cộng chung theo phiên bàn.`;
+    $('tblSub').textContent = `Bạn đang ngồi tại bàn ${tableId}. Gọi món, gọi thêm — mỗi order thanh toán ngay, gắn cùng phiên bàn.`;
     $('tblSession').textContent = 'Phiên: ' + session.id + (joined.existing ? ' · đang mở' : ' · vừa mở');
     render();
     window.addEventListener('cappan:sync', scheduleRender);
@@ -169,15 +187,15 @@
       return;
     }
     const order = API.orders.create({
-      serviceType: 'dine_in',
+      serviceType: 'table_service',
       source: 'qr_table',
       tableId,
       tableSessionId: session.id,
-      paymentMethod: 'pay_later',
-      paymentStatus: 'pay_later_open',
+      paymentMethod: 'mock_qr',
+      paymentStatus: 'paid',
       items: cart.map(x => ({ itemId: x.itemId, qty: x.qty, size: x.size || 'M' })),
       customerName: 'Khách bàn ' + tableId,
-      note: 'Order tại bàn qua QR'
+      note: 'Order tại bàn qua QR · thanh toán demo'
     });
     if (!order || !order.id) {
       toast('⚠ ' + (API._lastError || 'Không gửi được order.'), '#b3261e');
