@@ -133,7 +133,7 @@ Nói:
 
 > “Em không chỉ vẽ slide:
 > - 25 trang: 13 khách + 12 nhân viên;
-> - 128 test tự động;
+> - 129 test tự động;
 > - 23 trang smoke trên Chrome;
 > - 3 rule automation;
 > - 10 test BOM, 4 test TableSession/KDS;

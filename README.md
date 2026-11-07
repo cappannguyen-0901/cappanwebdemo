@@ -117,7 +117,7 @@ Hoặc `npm run check`. Hiện tại:
 - **Kịch bản**: 8 nhóm test phủ **45 câu khách + 25 câu nhân viên** và quy trình API (xem `docs/BO-KIEM-THU.md`).
 - **Kịch bản báo cáo cho giảng viên**: `docs/KICH-BAN-BAO-CAO.md`.
 - **Báo cáo sản phẩm**: `docs/TONG-KET-SAN-PHAM.md`.
-- **Tổng**: **128 test**; smoke **23 trang** trên Chrome headless.
+- **Tổng**: **129 test**; smoke **23 trang** trên Chrome headless.
 
 ---
 

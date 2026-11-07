@@ -1538,10 +1538,16 @@ const API = {
       }
     },
 
-    _nextKdsCode() {
-      const day = new Date().toISOString().slice(0, 10);
-      const n = this.getAll().filter(o => String(o.createdAt || '').slice(0, 10) === day).length + 1;
-      return 'A' + String(n).padStart(2, '0');
+    _nextKdsCode(list) {
+      const src = Array.isArray(list) ? list : this.getAll();
+      const used = new Set(src.map(o => o && o.kitchenCode).filter(Boolean));
+      let n = 1;
+      let code = '';
+      do {
+        code = 'A' + String(n).padStart(2, '0');
+        n++;
+      } while (used.has(code));
+      return code;
     },
 
     create(data) {
@@ -1632,7 +1638,30 @@ const API = {
 
     getKdsQueue() {
       const now = Date.now();
-      return this.getAll()
+      const list = this.getAll();
+      // Backfill mã A.. cho order cũ / order tạo trước khi có KDS code.
+      let changed = false;
+      const used = new Set(list.map(o => o && o.kitchenCode).filter(Boolean));
+      let seq = 1;
+      const nextCode = () => {
+        let code = '';
+        do {
+          code = 'A' + String(seq).padStart(2, '0');
+          seq++;
+        } while (used.has(code));
+        used.add(code);
+        return code;
+      };
+      list.forEach(o => {
+        if (!o || o.kitchenCode) return;
+        if (o.status === 'cancelled') return;
+        const ks = o.kitchenStatus || 'submitted';
+        if (ks === 'served' || ks === 'completed') return;
+        o.kitchenCode = nextCode();
+        changed = true;
+      });
+      if (changed) storeSet(STORAGE_KEYS.orders, JSON.stringify(list));
+      return list
         .filter(o => o && o.status !== 'cancelled' &&
           !['served', 'cancelled'].includes(o.kitchenStatus) &&
           (o.kitchenStatus || 'submitted') !== 'completed')

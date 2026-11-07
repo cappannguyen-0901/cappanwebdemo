@@ -97,3 +97,18 @@ test('POS sale vẫn vào KDS với source counter_pos', () => {
   assert.equal(sale.kitchenStatus, 'submitted');
   assert.equal(api.orders.getKdsQueue().some(o => o.id === sale.id), true);
 });
+
+test('KDS tự cấp mã A.. cho order cũ thiếu kitchenCode', () => {
+  const api = fresh();
+  const order = api.orders.create({
+    serviceType: 'takeaway',
+    source: 'web',
+    paymentMethod: 'cash',
+    items: [{ itemId: 'M003', qty: 1, size: 'M' }]
+  });
+  api.orders.update(order.id, { kitchenCode: null });
+  const q = api.orders.getKdsQueue();
+  const found = q.find(o => o.id === order.id);
+  assert.ok(found);
+  assert.match(found.kitchenCode, /^A\d{2}$/);
+});
