@@ -200,7 +200,7 @@ function renderOrderGrid() {
     el.innerHTML = items.map(item => `
       <div class="menu-card ${!item.inStock ? 'out-of-stock' : ''}" style="animation: pop 0.4s ease;">
         ${item.badge ? `<div class="badge">${esc(item.badge)}</div>` : ''}
-        ${!item.inStock ? '<div class="badge badge-out">Hết hàng</div>' : ''}
+        ${!item.inStock ? `<div class="badge badge-out">${item.inventoryManaged ? 'Hết nguyên liệu' : 'Hết hàng'}</div>` : (item.inventoryManaged && item.maxServings <= 2 ? `<div class="badge badge-low">Còn ${item.maxServings} ly</div>` : '')}
         <img src="${esc(item.img)}" alt="${esc(item.name)}" loading="lazy">
         <div class="info">
           <h4>${esc(item.name)}</h4>

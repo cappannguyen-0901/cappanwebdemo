@@ -3,7 +3,7 @@
 **Repo:** https://github.com/cappannguyen-0901/cappanwebdemo
 
 Web quán cà phê CAPPAN: đặt bàn theo sơ đồ, gọi món, giỏ hàng, theo dõi đơn, khuyến mãi,
-**thu ngân tại quầy**, 9 trang nhân viên và trợ lý AI tiếng Việt.
+**thu ngân tại quầy**, 10 trang nhân viên và trợ lý AI tiếng Việt.
 
 Bản **v4.2** hoàn thiện từ `Projectweb`: giữ nguyên giao diện, toàn bộ chức năng AI/chat và
 các lớp hiệu ứng sẵn có; bổ sung tầng lõi dùng chung, kiểm thử tự động, đóng gói `dist/`,
@@ -68,7 +68,7 @@ Không có proxy thì trợ lý vẫn trả lời bằng luật cục bộ + KB,
   luồng đặt bàn, không còn nhầm “2 người” thành tên món. Khung chat có mặt trên **mọi trang khách**.
 - **Ô nhập liệu**: chữ **nâu cà phê** trên nền sáng, nâu sáng ấm ở dark mode; chat/tìm kiếm/POS vẫn nền trắng, placeholder nâu xám.
 
-### Nhân viên (9 trang)
+### Nhân viên (10 trang)
 
 | Trang | Việc chính |
 |---|---|
@@ -77,6 +77,7 @@ Không có proxy thì trợ lý vẫn trả lời bằng luật cục bộ + KB,
 | `staff-orders.html` | Xác nhận, chuyển bước, huỷ đơn; **hiển thị ngay** + số lượng theo tab |
 | `staff-bookings.html` | **Đặt bàn hộ khách**, **giữ bàn**, **thu cọc**, check-in, hoàn tất, **khách không đến**, **khách vãng lai** |
 | `staff-menu-manage.html` | Thêm/sửa/xoá món, bật tắt còn hàng |
+| `staff-ingredients.html` | **Quản lý nguyên liệu + BOM**: nhập kho, định mức món, tự trừ khi bán, tự đánh dấu hết nguyên liệu |
 | `staff-promotions.html` | Thêm/sửa/xoá mã giảm giá |
 | `staff-schedule.html` | Lịch ca tuần, xếp nhân viên |
 | `staff-stats.html` | **Doanh thu theo kỳ**, so kỳ trước, kênh bán, thanh toán, top món, booking/cọc, **xuất CSV** |
@@ -107,20 +108,21 @@ node scripts/smoke.mjs        # Chrome/Edge thật, bản dist
 
 Hoặc `npm run check`. Hiện tại:
 
-- **AI/chat**: 5 bộ test (hồi quy 140 assert + golden 21/21, hành vi 39, injection 7, đa ý định 9, partial-refusal 5) + **24 test routing** (món/nhóm món/số người/đặt bàn/thẻ). Tổng **107 test**.
+- **AI/chat**: 5 bộ test (hồi quy 140 assert + golden 21/21, hành vi 39, injection 7, đa ý định 9, partial-refusal 5) + **24 test routing** (món/nhóm món/số người/đặt bàn/thẻ). Tổng **107 test** AI/chat.
 - **Tích hợp**: 31 test cho Pricing, đơn hàng, đặt bàn, policy, audit, POS, no-show, check-in, khách vãng lai, hash mật khẩu, automation.
+- **Tồn kho/BOM**: **10 test** cho định mức, trừ kho, hoàn kho, POS, order online, món hết hàng, món không có BOM.
 - **Tĩnh**: 39 test cho head/asset/thứ tự script/layout/ảnh nội bộ.
 - **Kịch bản**: 8 nhóm test phủ **45 câu khách + 25 câu nhân viên** và quy trình API (xem `docs/BO-KIEM-THU.md`).
 - **Kịch bản báo cáo cho giảng viên**: `docs/KICH-BAN-BAO-CAO.md`.
 - **Báo cáo sản phẩm**: `docs/TONG-KET-SAN-PHAM.md`.
-- **Smoke**: 19 trang trên Chrome headless.
+- **Tổng**: **121 test**; smoke **20 trang** trên Chrome headless.
 
 ---
 
 ## 4. Cấu trúc
 
 ```
-*.html                 21 trang (source, mở trực tiếp được)
+*.html                 22 trang (source, mở trực tiếp được)
 *.css                  style / theme / dark-mode / staff / chat-panel / card-premium / ui-polish / cashier
 assets/images/         22 ảnh nội bộ (không phụ thuộc Unsplash)
 js/

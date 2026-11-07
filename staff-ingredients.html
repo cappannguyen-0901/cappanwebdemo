@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    const theme = localStorage.getItem('cappan_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<title>Quản lý nguyên liệu — CAPPAN Staff</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#6F4E37">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="CAPPAN Staff — quản lý tồn kho nguyên liệu, định mức BOM và tự động đánh dấu món hết nguyên liệu.">
+<meta property="og:title" content="CAPPAN – Coffee & More">
+<meta property="og:description" content="CAPPAN – Coffee & More · Home Study. Đặt bàn, gọi món, theo dõi đơn và trò chuyện với trợ lý AI tại quán cà phê CAPPAN, Gò Vấp, TP.HCM.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:image" content="assets/images/photo-1554118811-1e0d58224f24-w900.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="chat-panel.css">
+<link rel="stylesheet" href="staff.css">
+<link rel="stylesheet" href="dark-mode.css">
+<link rel="stylesheet" href="card-premium.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="ui-polish.css">
+<style>
+  .ing-demo {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin: 0 0 18px; padding: 13px 16px; border-radius: 14px;
+    background: linear-gradient(110deg, #f6ecd8, #fbf7f0);
+    border: 1px solid #e4cf9b; color: #5b402b; font-size: 13px;
+  }
+  .ing-demo strong { color: #8a5a1f; }
+  .ing-demo .ing-demo-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; background: #2a1a14; color: #f3dc82;
+    font-weight: 700; font-size: 11px; white-space: nowrap;
+  }
+  .ing-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .ing-kpi {
+    background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 14px;
+    padding: 14px 16px; box-shadow: 0 2px 8px rgba(64, 42, 26, .04);
+  }
+  .ing-kpi .label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8b7160; font-weight: 700; }
+  .ing-kpi .value { margin-top: 5px; font-family: Georgia, serif; font-size: 28px; line-height: 1.05; color: #2b1f18; }
+  .ing-kpi .hint { margin-top: 3px; font-size: 11px; color: #8b7160; }
+  .ing-kpi.warn .value { color: #b36b00; }
+  .ing-kpi.danger .value { color: #b3261e; }
+  .ing-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .ing-toolbar input[type="search"] {
+    flex: 1; min-width: 190px; max-width: 360px; padding: 9px 12px;
+    border: 1px solid #d9c8b5; border-radius: 9px; background: #fffdf9; color: #2b1f18;
+  }
+  .ing-table-wrap { overflow: auto; border: 1px solid #e7d9c8; border-radius: 12px; }
+  .ing-table { width: 100%; border-collapse: collapse; min-width: 720px; font-size: 12.5px; }
+  .ing-table th {
+    background: #3e2723; color: #fbf7f0; text-align: left; padding: 10px 12px;
+    font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+  }
+  .ing-table td { padding: 10px 12px; border-bottom: 1px solid #efe3d5; vertical-align: middle; color: #4a3427; }
+  .ing-table tr:last-child td { border-bottom: 0; }
+  .ing-table tbody tr:hover { background: #fcf7ef; }
+  .ing-table .ing-name { font-weight: 700; color: #2b1f18; }
+  .ing-table .ing-sub { display: block; color: #8b7160; font-size: 10.5px; margin-top: 2px; }
+  .ing-table .num { font-variant-numeric: tabular-nums; white-space: nowrap; color: #2b1f18; }
+  .ing-table tr.demo-row { background: #fff6df; }
+  .ing-table tr.demo-row:hover { background: #fdf0d0; }
+  .ing-badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+    border-radius: 999px; font-size: 10.5px; font-weight: 700; white-space: nowrap;
+  }
+  .ing-badge.ok { background: #e3efe0; color: #23662a; }
+  .ing-badge.low { background: #fff0cf; color: #8a5a00; }
+  .ing-badge.out { background: #f8dedb; color: #a5221a; }
+  .ing-badge.demo { background: #2a1a14; color: #f3dc82; }
+  .ing-actions { display: flex; gap: 6px; white-space: nowrap; }
+  .ing-actions button {
+    border: 1px solid #d9c8b5; background: #fffdf9; color: #5b402b;
+    border-radius: 7px; padding: 4px 8px; font-size: 11px; cursor: pointer;
+  }
+  .ing-actions button:hover { background: #f4e8d8; }
+  .ing-actions button.primary { background: #2a1a14; border-color: #2a1a14; color: #f3dc82; }
+  .ing-two-col { display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px; margin-top: 16px; }
+  .ing-panel {
+    background: #fffdf9; border: 1px solid #e7d9c8; border-radius: 14px;
+    padding: 14px 16px; min-width: 0;
+  }
+  .ing-panel h3 { margin: 0 0 3px; font-size: 14px; color: #2b1f18; }
+  .ing-panel .sub { font-size: 11px; color: #8b7160; margin-bottom: 10px; }
+  .bom-list { display: flex; flex-direction: column; gap: 7px; max-height: 440px; overflow: auto; padding-right: 2px; }
+  .bom-row {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center;
+    padding: 9px 10px; border: 1px solid #efe3d5; border-radius: 10px; background: #fcf8f2;
+  }
+  .bom-row.demo { border-color: #e4bf48; background: #fff6df; }
+  .bom-row .bom-title { font-size: 12px; font-weight: 700; color: #2b1f18; }
+  .bom-row .bom-lines { font-size: 10.5px; color: #8b7160; margin-top: 2px; line-height: 1.4; }
+  .bom-row .bom-max { font-size: 12px; font-weight: 800; color: #2b1f18; white-space: nowrap; text-align: right; }
+  .bom-row .bom-max small { display: block; font-size: 9.5px; font-weight: 600; color: #8b7160; }
+  .log-list { display: flex; flex-direction: column; gap: 6px; max-height: 440px; overflow: auto; }
+  .log-row { display: grid; grid-template-columns: 62px 1fr auto; gap: 8px; font-size: 11px; padding: 6px 0; border-bottom: 1px dashed #efe3d5; align-items: baseline; }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row .log-type { font-weight: 800; font-size: 9.5px; letter-spacing: .03em; text-transform: uppercase; }
+  .log-row .log-type.sale { color: #b3261e; }
+  .log-row .log-type.import { color: #23662a; }
+  .log-row .log-type.adjust { color: #8a5a00; }
+  .log-row .log-type.refund { color: #23662a; }
+  .log-row .log-main { color: #4a3427; line-height: 1.35; }
+  .log-row .log-qty { font-weight: 800; color: #2b1f18; white-space: nowrap; }
+  .ing-modal {
+    position: fixed; inset: 0; z-index: 1000; display: none;
+    align-items: center; justify-content: center; padding: 18px;
+    background: rgba(26, 16, 10, .48); backdrop-filter: blur(3px);
+  }
+  .ing-modal.open { display: flex; }
+  .ing-modal-box {
+    width: min(430px, 100%); background: #fffdf9; border-radius: 16px;
+    padding: 20px; box-shadow: 0 18px 60px rgba(24, 14, 8, .28); border: 1px solid #e4cf9b;
+  }
+  .ing-modal-box h3 { margin: 0 0 4px; font-size: 18px; color: #2b1f18; }
+  .ing-modal-box p { margin: 0 0 14px; font-size: 12px; color: #8b7160; }
+  .ing-field { margin-bottom: 11px; }
+  .ing-field label { display: block; font-size: 11px; font-weight: 700; color: #5b402b; margin-bottom: 4px; }
+  .ing-field input, .ing-field textarea {
+    width: 100%; box-sizing: border-box; padding: 9px 11px; border: 1px solid #d9c8b5;
+    border-radius: 9px; background: #fffdf9; color: #2b1f18; font: inherit; font-size: 13px;
+  }
+  .ing-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .ing-modal-actions button { border-radius: 9px; padding: 8px 13px; font-size: 12px; cursor: pointer; }
+  .ing-modal-actions .cancel { background: #f4e8d8; border: 1px solid #d9c8b5; color: #5b402b; }
+  .ing-modal-actions .save { background: #2a1a14; border: 1px solid #2a1a14; color: #f3dc82; font-weight: 700; }
+  .ing-empty { padding: 24px 12px; text-align: center; color: #8b7160; font-size: 12px; }
+  @media (max-width: 1050px) {
+    .ing-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ing-two-col { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 620px) {
+    .ing-kpis { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ing-kpi .value { font-size: 23px; }
+    .ing-demo { font-size: 12px; }
+  }
+</style>
+</head>
+<body data-page="staff-ingredients">
+
+<header class="app-header">
+  <a class="logo" href="staff-dashboard.html">
+    <span class="brand">CAPP<span>AN</span></span>
+    <span class="tagline">Staff Panel</span>
+  </a>
+  <button class="menu-toggle" aria-label="Mở menu" onclick="toggleMobileMenu()">☰</button>
+  <nav class="nav" id="mainNav"></nav>
+</header>
+
+<div class="dashboard-layout" id="dashboardLayout">
+  <div class="dashboard-main">
+    <section class="section">
+      <div class="staff-header">
+        <div>
+          <h1 class="staff-title">📦 Quản lý nguyên liệu</h1>
+          <p class="staff-sub">Nhập kho → trừ theo BOM khi bán → tự đánh dấu món hết nguyên liệu.</p>
+        </div>
+      </div>
+
+      <div class="ing-demo">
+        <span class="ing-demo-pill">DEMO 1 LY</span>
+        <span><strong>Trà Xanh Matcha</strong> chỉ còn đúng <strong>3g bột matcha</strong> — bán 1 ly là hết hàng ngay. Dùng nút <strong>Reset kho demo</strong> để diễn lại.</span>
+      </div>
+
+      <div class="ing-kpis" id="ingKpis"></div>
+
+      <div class="ing-panel" style="margin-bottom: 0;">
+        <div class="ing-toolbar">
+          <input type="search" id="ingSearch" placeholder="Tìm nguyên liệu..." autocomplete="off" aria-label="Tìm nguyên liệu">
+          <button class="btn" type="button" onclick="openIngredientModal('import','I_MATCHA')">+ Nhập matcha demo</button>
+          <button class="btn" type="button" onclick="openIngredientModal('import','I_MILK')">+ Nhập sữa</button>
+          <button class="btn" type="button" onclick="resetInventoryDemo()" style="background:#f4e8d8;color:#5b402b;border:1px solid #d9c8b5;">↻ Reset kho demo</button>
+        </div>
+        <div class="ing-table-wrap">
+          <table class="ing-table">
+            <thead>
+              <tr>
+                <th>Nguyên liệu</th>
+                <th>Tồn kho</th>
+                <th>Ngưỡng</th>
+                <th>Đơn giá</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="ingTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="ing-two-col">
+        <div class="ing-panel">
+          <h3>Định mức BOM — còn bán được bao nhiêu?</h3>
+          <div class="sub">Tính từ tồn kho thực tế và định mức từng món. Món không có BOM sẽ không bị chặn.</div>
+          <div class="bom-list" id="bomList"></div>
+        </div>
+        <div class="ing-panel">
+          <h3>Lịch sử kho</h3>
+          <div class="sub">Nhập, bán, điều chỉnh và hoàn kho — 12 dòng gần nhất.</div>
+          <div class="log-list" id="inventoryLog"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="ing-modal" id="ingModal" role="dialog" aria-modal="true" aria-labelledby="ingModalTitle">
+  <div class="ing-modal-box">
+    <h3 id="ingModalTitle">Nhập kho</h3>
+    <p id="ingModalSub">Nhập thêm số lượng vào tồn kho hiện tại.</p>
+    <input type="hidden" id="ingModalId">
+    <input type="hidden" id="ingModalMode">
+    <div class="ing-field">
+      <label for="ingModalQty">Số lượng <span id="ingModalUnit"></span></label>
+      <input type="number" id="ingModalQty" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="ing-field">
+      <label for="ingModalNote">Ghi chú</label>
+      <input type="text" id="ingModalNote" maxlength="120" placeholder="VD: nhập từ Vinamilk">
+    </div>
+    <div class="ing-modal-actions">
+      <button type="button" class="cancel" onclick="closeIngredientModal()">Huỷ</button>
+      <button type="button" class="save" onclick="saveIngredientModal()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">✓ Thành công!</div>
+
+<script src="js/data/schema.js"></script>
+<script src="js/data/seed.js"></script>
+<script src="js/data/recipes.js"></script>
+<script src="js/data/kb.js"></script>
+<script src="js/data/promotions.js"></script>
+<script src="js/ai/ai-input.js"></script>
+<script src="js/ai/ai-output.js"></script>
+<script src="js/core.js"></script>
+<script src="js/api/index.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/staff-guard.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/staff-nav.js"></script>
+<script src="js/dark-mode.js"></script>
+<script src="js/ingredients-page.js"></script>
+</body>
+</html>

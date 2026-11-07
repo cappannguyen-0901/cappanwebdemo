@@ -376,6 +376,7 @@ button { font-family: inherit; }
   letter-spacing: 0.5px;
 }
 .badge-out { background: var(--red) !important; color: white !important; left: auto !important; right: 12px; }
+.badge-low { background: #b36b00 !important; color: #fff8e8 !important; left: auto !important; right: 12px; }
 .menu-card.out-of-stock { opacity: 0.7; }
 .menu-card.out-of-stock img { filter: grayscale(70%); }
 

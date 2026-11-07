@@ -164,11 +164,13 @@ test('Trang báo cáo có kỳ ngày/tuần/tháng/năm, KPI, kênh bán, bookin
   assert.match(html, /ReportEngine/);
 });
 
-test('Automation engine có 2 rule, dry-run/undo/audit và nạp qua Ctrl+Shift+D', () => {
+test('Automation engine có 3 rule, dry-run/undo/audit và nạp qua Ctrl+Shift+D', () => {
   const auto = read('js/automation.js');
   const demo = read('js/demo.js');
   assert.match(auto, /autoReleaseHeld/);
   assert.match(auto, /outOfStock/);
+  assert.match(auto, /syncIngredientRule/);
+  assert.match(auto, /ingredientEnabled/);
   assert.match(auto, /undoLast/);
   assert.match(auto, /heldMinutes/);
   assert.match(demo, /automationDemo/);

@@ -194,3 +194,89 @@ const SEED_SHIFTS = [
   { id: 'afternoon', name: 'Ca chiều', start: '12:00', end: '17:00', color: '#42A5F5' },
   { id: 'evening', name: 'Ca tối',   start: '17:00', end: '22:30', color: '#7E57C2' }
 ];
+
+/* ============================================================
+   INVENTORY SEED — nguyên liệu + BOM (định mức nguyên vật liệu)
+   Đơn vị gốc: ml / g / cái. UI có thể hiển thị L/kg.
+   ============================================================ */
+const SEED_INGREDIENTS = [
+  { id:'I_MILK',      name:'Sữa tươi',          unit:'ml',  stock:5000, minStock:1000, unitCost:0.030, supplier:'Vinamilk',        note:'Sữa thanh trùng' },
+  { id:'I_CONDENSED', name:'Sữa đặc',           unit:'ml',  stock:2000, minStock:500,  unitCost:0.050, supplier:'Vinamilk',        note:'Sữa đặc có đường' },
+  { id:'I_COFFEE',    name:'Cà phê hạt',        unit:'g',   stock:1000, minStock:200,  unitCost:0.250, supplier:'CAPPAN Roastery', note:'Robusta/Arabica rang' },
+  { id:'I_TEA',       name:'Trà đen',            unit:'g',   stock:500,  minStock:100,  unitCost:0.200, supplier:'CAPPAN Tea',      note:'Trà Earl Grey/trà đen' },
+  { id:'I_MATCHA',    name:'Bột matcha',         unit:'g',   stock:3,    minStock:3,    unitCost:2.500, supplier:'Nhật Bản',        note:'Mẻ demo: chỉ đủ 1 ly' },
+  { id:'I_PEACH',     name:'Syrup đào',          unit:'ml',  stock:1000, minStock:200,  unitCost:0.100, supplier:'Monin',           note:'Syrup trái cây' },
+  { id:'I_ORANGE',    name:'Nước cam',           unit:'ml',  stock:2000, minStock:300,  unitCost:0.040, supplier:'Local farm',      note:'Cam vắt' },
+  { id:'I_SUGAR',     name:'Nước đường',         unit:'ml',  stock:2000, minStock:300,  unitCost:0.020, supplier:'CAPPAN',          note:'Syrup đường' },
+  { id:'I_ICE',       name:'Đá viên',            unit:'g',   stock:5000, minStock:1000, unitCost:0.001, supplier:'Local',           note:'Đá viên' },
+  { id:'I_CUP',       name:'Ly giấy',            unit:'cái', stock:200,  minStock:30,   unitCost:1.200, supplier:'EcoCup',          note:'Ly 500ml' },
+  { id:'I_LID',       name:'Nắp ly',             unit:'cái', stock:200,  minStock:30,   unitCost:0.400, supplier:'EcoCup',          note:'Nắp ly' },
+  { id:'I_STRAW',     name:'Ống hút',            unit:'cái', stock:200,  minStock:30,   unitCost:0.200, supplier:'EcoCup',          note:'Ống hút giấy' },
+  { id:'I_COCOA',     name:'Bột ca cao',         unit:'g',   stock:200,  minStock:30,   unitCost:0.300, supplier:'CAPPAN',          note:'Rắc bề mặt' },
+  { id:'I_CREAMER',   name:'Kem béo',            unit:'ml',  stock:1000, minStock:200,  unitCost:0.060, supplier:'Rich\'s',         note:'Creamer' },
+  { id:'I_GINGER',    name:'Gừng tươi',          unit:'g',   stock:300,  minStock:50,   unitCost:0.080, supplier:'Local farm',      note:'Gừng tươi' },
+  { id:'I_HONEY',     name:'Mật ong',            unit:'ml',  stock:1000, minStock:150,  unitCost:0.120, supplier:'Local farm',      note:'Mật ong' },
+  { id:'I_AVOCADO',   name:'Bơ sáp',             unit:'g',   stock:2000, minStock:300,  unitCost:0.070, supplier:'Local farm',      note:'Bơ sáp' },
+  { id:'I_SODA',      name:'Soda',               unit:'ml',  stock:3000, minStock:500,  unitCost:0.015, supplier:'CAPPAN',          note:'Soda lạnh' }
+];
+
+/* BOM: mỗi món là danh sách nguyên liệu cho size M.
+   size L dùng factor 1.25 nếu món có size L; demo có thể override. */
+const SEED_BOM = {
+  M001: { name:'Cà Phê Sữa Đá', wasteRate:0.05, lines:[
+    { ingredientId:'I_COFFEE', qty:25 }, { ingredientId:'I_CONDENSED', qty:30 },
+    { ingredientId:'I_ICE', qty:150 }, { ingredientId:'I_CUP', qty:1 },
+    { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]},
+  M002: { name:'Bạc Xỉu', wasteRate:0.05, lines:[
+    { ingredientId:'I_CONDENSED', qty:30 }, { ingredientId:'I_MILK', qty:40 },
+    { ingredientId:'I_COFFEE', qty:15 }, { ingredientId:'I_ICE', qty:150 },
+    { ingredientId:'I_CUP', qty:1 }, { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]},
+  M003: { name:'Latte Nóng', wasteRate:0.05, lines:[
+    { ingredientId:'I_COFFEE', qty:18 }, { ingredientId:'I_MILK', qty:200 },
+    { ingredientId:'I_CUP', qty:1 }, { ingredientId:'I_LID', qty:1 }
+  ]},
+  M004: { name:'Cappuccino', wasteRate:0.05, lines:[
+    { ingredientId:'I_COFFEE', qty:18 }, { ingredientId:'I_MILK', qty:180 },
+    { ingredientId:'I_COCOA', qty:2 }, { ingredientId:'I_CUP', qty:1 }, { ingredientId:'I_LID', qty:1 }
+  ]},
+  M005: { name:'Espresso', wasteRate:0.05, lines:[
+    { ingredientId:'I_COFFEE', qty:18 }, { ingredientId:'I_CUP', qty:1 }
+  ]},
+  M006: { name:'Cà Phê Muối', wasteRate:0.05, lines:[
+    { ingredientId:'I_COFFEE', qty:30 }, { ingredientId:'I_CONDENSED', qty:15 },
+    { ingredientId:'I_CREAMER', qty:40 }, { ingredientId:'I_ICE', qty:150 },
+    { ingredientId:'I_CUP', qty:1 }, { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]},
+  M101: { name:'Trà Đào Cam Sả', wasteRate:0.05, lines:[
+    { ingredientId:'I_TEA', qty:10 }, { ingredientId:'I_PEACH', qty:20 },
+    { ingredientId:'I_ORANGE', qty:10 }, { ingredientId:'I_SUGAR', qty:10 },
+    { ingredientId:'I_ICE', qty:150 }, { ingredientId:'I_CUP', qty:1 },
+    { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]},
+  M102: { name:'Trà Xanh Matcha', wasteRate:0, lines:[
+    { ingredientId:'I_MATCHA', qty:3 }, { ingredientId:'I_MILK', qty:100 },
+    { ingredientId:'I_SUGAR', qty:15 }, { ingredientId:'I_ICE', qty:150 },
+    { ingredientId:'I_CUP', qty:1 }, { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]},
+  M103: { name:'Trà Sen Vàng', wasteRate:0.05, lines:[
+    { ingredientId:'I_TEA', qty:8 }, { ingredientId:'I_SUGAR', qty:10 },
+    { ingredientId:'I_ICE', qty:150 }, { ingredientId:'I_CUP', qty:1 },
+    { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]},
+  M104: { name:'Trà Gừng Mật Ong', wasteRate:0.05, lines:[
+    { ingredientId:'I_TEA', qty:5 }, { ingredientId:'I_GINGER', qty:15 },
+    { ingredientId:'I_HONEY', qty:20 }, { ingredientId:'I_CUP', qty:1 }, { ingredientId:'I_LID', qty:1 }
+  ]},
+  M201: { name:'Sinh Tố Bơ', wasteRate:0.05, lines:[
+    { ingredientId:'I_AVOCADO', qty:150 }, { ingredientId:'I_MILK', qty:100 },
+    { ingredientId:'I_CONDENSED', qty:20 }, { ingredientId:'I_ICE', qty:100 },
+    { ingredientId:'I_CUP', qty:1 }, { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]},
+  M301: { name:'Nước Ép Cam', wasteRate:0.05, lines:[
+    { ingredientId:'I_ORANGE', qty:200 }, { ingredientId:'I_SUGAR', qty:10 },
+    { ingredientId:'I_ICE', qty:100 }, { ingredientId:'I_CUP', qty:1 },
+    { ingredientId:'I_LID', qty:1 }, { ingredientId:'I_STRAW', qty:1 }
+  ]}
+};

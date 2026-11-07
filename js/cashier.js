@@ -240,6 +240,7 @@
       : `✓ Đã thu ${money(sale.total)} · ${sale.id}`);
     clearBill();
     renderRecent();
+    if (typeof renderMenu === 'function') renderMenu();
   };
 
   /* ---------- KHỞI ĐỘNG ---------- */

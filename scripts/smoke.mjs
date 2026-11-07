@@ -52,6 +52,7 @@ if (build.mode === 'demo') {
     { page: 'staff-bookings.html', query: '?as=0900000002', must: ['Danh sách booking'] },
     { page: 'staff-stats.html', query: '?as=0900000002', must: ['Thống kê'] },
     { page: 'staff-menu-manage.html', query: '?as=0900000002', must: ['Quản lý menu'] },
+    { page: 'staff-ingredients.html', query: '?as=0900000002', must: ['Quản lý nguyên liệu', 'Bột matcha'] },
     { page: 'staff-promotions.html', query: '?as=0900000002', must: ['Khuyến mãi'] },
     { page: 'staff-schedule.html', query: '?as=0900000002', must: ['Lịch ca'] },
     { page: 'staff-ai.html', query: '?as=0900000002', must: ['AI'] }

@@ -14,6 +14,7 @@ function renderStaffNav(activePage) {
     { href: 'staff-orders.html',    label: '📦 Đơn hàng',      id: 'orders' },
     { href: 'staff-bookings.html',  label: '🪑 Booking',        id: 'bookings' },
     { href: 'staff-menu-manage.html', label: '☕ Quản lý menu', id: 'menu' },
+    { href: 'staff-ingredients.html', label: '📦 Nguyên liệu', id: 'ingredients' },
     { href: 'staff-promotions.html', label: '🎁 Khuyến mãi',  id: 'promotions' },
     { href: 'staff-schedule.html',  label: '📅 Lịch ca',        id: 'schedule' }
   ];

@@ -136,6 +136,7 @@ d.classList.add('no-anim');}catch(e){}})();
         <div class="automation-toggles">
           <label><input type="checkbox" id="autoHeld"> Nhả bàn quá giờ đặt <input type="number" id="autoMinutes" min="1" max="120" value="15"> phút</label>
           <label><input type="checkbox" id="autoStock"> Làm mờ &amp; chặn món hết hàng</label>
+          <label><input type="checkbox" id="autoIngredient"> Kiểm tra BOM &amp; tự chặn món hết nguyên liệu</label>
           <label><input type="checkbox" id="autoEnabled"> Bật tự động hóa</label>
         </div>
         <div id="automationLog" class="automation-log"></div>
@@ -321,10 +322,12 @@ function bindAutomationControls() {
   const s = AutomationEngine.settings;
   const held = document.getElementById('autoHeld');
   const stock = document.getElementById('autoStock');
+  const ingredient = document.getElementById('autoIngredient');
   const enabled = document.getElementById('autoEnabled');
   const minutes = document.getElementById('autoMinutes');
   if (held) { held.checked = !!s.heldEnabled; held.onchange = e => AutomationEngine.setSettings({ heldEnabled: e.target.checked }); }
   if (stock) { stock.checked = !!s.stockEnabled; stock.onchange = e => AutomationEngine.setSettings({ stockEnabled: e.target.checked }); }
+  if (ingredient) { ingredient.checked = !!s.ingredientEnabled; ingredient.onchange = e => AutomationEngine.setSettings({ ingredientEnabled: e.target.checked }); }
   if (enabled) { enabled.checked = !!s.enabled; enabled.onchange = e => AutomationEngine.setSettings({ enabled: e.target.checked }); }
   if (minutes) {
     minutes.value = s.heldMinutes || 15;
@@ -342,7 +345,7 @@ function renderAutomation() {
     <div class="automation-summary">
       <span class="auto-pill ${s.settings.enabled ? 'on' : 'off'}">${s.settings.enabled ? '● Đang chạy' : '○ Đang tắt'}</span>
       <span>${s.describe}</span>
-      <span class="auto-meta">${s.heldCount} bàn đang giữ · ${s.outOfStockCount} món hết hàng</span>
+      <span class="auto-meta">${s.heldCount} bàn đang giữ · ${s.outOfStockCount} món hết hàng${typeof s.lowIngredientCount === 'number' ? ` · ${s.lowIngredientCount} món sắp hết NVL` : ''}</span>
     </div>`;
   if (!log) return;
   const rows = (s.logs || []).slice(0, 6);
@@ -370,6 +373,7 @@ function previewAutomation() {
   const parts = [];
   if (p.expired.length) parts.push(`sẽ nhả ${p.expired.length} bàn giữ quá hạn`);
   if (p.outOfStock.length) parts.push(`${p.outOfStock.length} món hết hàng đã bị chặn`);
+  if (p.lowIngredients && p.lowIngredients.length) parts.push(`${p.lowIngredients.length} món sắp hết nguyên liệu`);
   if (typeof showToast === 'function') {
     showToast(parts.length ? '🔍 ' + parts.join(' · ') : '✓ Không có gì cần xử lý lúc này',
       parts.length ? '#856404' : '#1B7F3B');

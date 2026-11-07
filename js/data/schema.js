@@ -14,8 +14,9 @@ const SCHEMA = {
     desc: 'Nhóm đồ uống'
   },
   menuItems: {
-    fields: ['id', 'name', 'categoryId', 'price', 'img', 'description', 'badge', 'inStock', 'sizes', 'toppings'],
-    desc: 'Món đồ uống'
+    fields: ['id', 'name', 'categoryId', 'price', 'img', 'description', 'badge', 'inStock', 'sizes', 'toppings',
+             'inventoryManaged', 'ingredientAvailable', 'maxServings', 'limitingIngredient'],
+    desc: 'Món đồ uống (các cờ inventory* là computed từ BOM, không lưu vào menu)'
   },
   floors: {
     fields: ['id', 'name', 'purpose', 'description', 'img'],
@@ -34,8 +35,21 @@ const SCHEMA = {
   orders: {
     fields: ['id', 'userId', 'items', 'subtotal', 'shipping', 'discount', 'total', 'promoCode',
              'address', 'phone', 'note', 'customerName', 'status', 'step', 'channel',
-             'paymentMethod', 'cashReceived', 'change', 'staffId', 'createdAt', 'completedAt', 'paidAt'],
+             'paymentMethod', 'cashReceived', 'change', 'staffId', 'createdAt', 'completedAt', 'paidAt',
+             'inventoryDeducted', 'inventoryRestoredAt'],
     desc: 'Lịch sử đơn hàng (giao hàng + thu ngân tại quầy)'
+  },
+  ingredients: {
+    fields: ['id', 'name', 'unit', 'stock', 'minStock', 'unitCost', 'supplier', 'note', 'updatedAt'],
+    desc: 'Nguyên liệu — đơn vị gốc ml/g/cái, tồn kho là số thực'
+  },
+  bom: {
+    fields: ['menuItemId', 'lines', 'wasteRate', 'sizes'],
+    desc: 'Định mức nguyên vật liệu (Bill of Materials) cho một món'
+  },
+  inventoryLog: {
+    fields: ['id', 'at', 'type', 'ingredientId', 'name', 'unit', 'qty', 'before', 'after', 'orderId', 'note'],
+    desc: 'Nhật ký kho: import / sale / adjust / refund'
   },
   audit: {
     fields: ['at', 'actor', 'action', 'targetId', 'ok', 'code'],
@@ -49,7 +63,8 @@ const ENUMS = {
   orderStatus:   ['pending', 'preparing', 'delivering', 'completed', 'cancelled'],
   floorPurpose:  ['lobby', 'study', 'group', 'outdoor'],
   seatZone:      ['window', 'center', 'quiet', 'group'],
-  seatStatus:    ['available', 'booked']
+  seatStatus:    ['available', 'booked'],
+  inventoryType: ['import', 'sale', 'adjust', 'refund']
 };
 
 const STORAGE_KEYS = {
@@ -57,5 +72,8 @@ const STORAGE_KEYS = {
   users:        'cappan_users',
   bookings:     'cappan_bookings',
   orders:       'cappan_orders',
-  currentOrder: 'cappan_current_order'
+  currentOrder: 'cappan_current_order',
+  ingredients:  'cappan_ingredients_v1',
+  bom:          'cappan_bom_v1',
+  inventoryLog: 'cappan_inventory_log_v1'
 };

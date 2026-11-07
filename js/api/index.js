@@ -189,6 +189,7 @@ const API = {
     _cache: null,
     _epoch: 0,
     _epochAtBuild: -1,
+    _inventoryEpoch: -1,
 
     _invalidate() {
       this._cache = null;
@@ -220,7 +221,9 @@ const API = {
 
     /* ⚡ Cache hit nếu epoch chưa đổi kể từ lần build trước */
     getAll() {
-      if (this._cache && this._epochAtBuild === this._epoch) {
+      const invEpoch = (typeof API !== 'undefined' && API.ingredients)
+        ? (API.ingredients._epoch || 0) : 0;
+      if (this._cache && this._epochAtBuild === this._epoch && this._inventoryEpoch === invEpoch) {
         return this._cache;
       }
 
@@ -234,11 +237,31 @@ const API = {
         .map(m => {
           const merged = { ...m, ...(overrides[m.id] || {}) };
           merged.inStock = stateMap[m.id] !== undefined ? stateMap[m.id] : merged.inStock;
+
+          // ⚡ Tồn kho nguyên liệu là lớp phủ, không ghi đè cờ thủ công.
+          let inv = null;
+          try {
+            inv = (typeof API !== 'undefined' && API.ingredients)
+              ? API.ingredients.availability(m.id) : null;
+          } catch (e) { inv = null; }
+          if (inv && inv.managed) {
+            merged.ingredientAvailable = !!inv.available;
+            merged.maxServings = inv.maxServings;
+            merged.limitingIngredient = inv.limiting;
+            merged.inventoryManaged = true;
+            merged.inStock = !!merged.inStock && !!inv.available;
+          } else {
+            merged.ingredientAvailable = true;
+            merged.maxServings = null;
+            merged.limitingIngredient = null;
+            merged.inventoryManaged = false;
+          }
           return merged;
         });
 
       this._cache = result;
       this._epochAtBuild = this._epoch;
+      this._inventoryEpoch = invEpoch;
       return result;
     },
 
@@ -336,6 +359,278 @@ const API = {
       this._invalidate();
       this._syncSeed();
       return true;
+    }
+  },
+
+  /* ---------- INGREDIENTS / BOM / INVENTORY ---------- */
+  ingredients: {
+    ING_KEY: 'cappan_ingredients_v1',
+    BOM_KEY: 'cappan_bom_v1',
+    LOG_KEY: 'cappan_inventory_log_v1',
+    _epoch: 1,
+
+    _read(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw === null) return fallback;
+        const val = JSON.parse(raw);
+        return val === null || val === undefined ? fallback : val;
+      } catch (e) { return fallback; }
+    },
+
+    _write(key, val) {
+      return storeSet(key, JSON.stringify(val));
+    },
+
+    _ensure() {
+      try {
+        if (localStorage.getItem(this.ING_KEY) === null) {
+          const seed = (typeof SEED_INGREDIENTS !== 'undefined') ? SEED_INGREDIENTS : [];
+          this._write(this.ING_KEY, seed.map(x => ({ ...x })));
+        }
+        if (localStorage.getItem(this.BOM_KEY) === null) {
+          const seed = (typeof SEED_BOM !== 'undefined') ? SEED_BOM : {};
+          this._write(this.BOM_KEY, JSON.parse(JSON.stringify(seed)));
+        }
+      } catch (e) {
+        console.warn('[inventory] seed failed:', e);
+      }
+    },
+
+    getAll() {
+      this._ensure();
+      const list = this._read(this.ING_KEY, []);
+      return Array.isArray(list) ? list : [];
+    },
+
+    getById(id) {
+      return this.getAll().find(x => x.id === id) || null;
+    },
+
+    getLogs(limit) {
+      const list = this._read(this.LOG_KEY, []);
+      const n = Math.max(1, Math.min(Number(limit) || 200, 500));
+      return Array.isArray(list) ? list.slice(0, n) : [];
+    },
+
+    getBom(menuItemId) {
+      this._ensure();
+      const all = this._read(this.BOM_KEY, {});
+      const bom = all && all[menuItemId];
+      return (bom && Array.isArray(bom.lines) && bom.lines.length) ? bom : null;
+    },
+
+    getAllBom() {
+      this._ensure();
+      const all = this._read(this.BOM_KEY, {});
+      return (all && typeof all === 'object') ? all : {};
+    },
+
+    setBom(menuItemId, lines, wasteRate) {
+      if (!menuItemId) return { ok: false, error: 'Thiếu mã món' };
+      const clean = (Array.isArray(lines) ? lines : [])
+        .map(x => ({ ingredientId: String(x.ingredientId || ''), qty: Number(x.qty) || 0 }))
+        .filter(x => x.ingredientId && x.qty > 0);
+      if (!clean.length) return { ok: false, error: 'BOM phải có ít nhất 1 nguyên liệu' };
+      const all = this.getAllBom();
+      all[menuItemId] = { name: (all[menuItemId] && all[menuItemId].name) || '', lines: clean, wasteRate: Math.max(0, Number(wasteRate) || 0) };
+      this._write(this.BOM_KEY, all);
+      this._epoch++;
+      return { ok: true, bom: all[menuItemId] };
+    },
+
+    _sizeFactor(size, bom) {
+      if (!size) return 1;
+      if (bom && bom.sizes && bom.sizes[size] !== undefined) return Number(bom.sizes[size]) || 1;
+      return String(size).toUpperCase() === 'L' ? 1.25 : 1;
+    },
+
+    /* Định lượng một dòng món (đã gồm size + hao hụt). */
+    _explode(menuItemId, size, quantity) {
+      const bom = this.getBom(menuItemId);
+      if (!bom) return [];
+      const factor = this._sizeFactor(size, bom);
+      const waste = Math.max(0, Number(bom.wasteRate) || 0);
+      return bom.lines.map(line => {
+        const ing = this.getById(line.ingredientId);
+        return {
+          ingredientId: line.ingredientId,
+          name: ing ? ing.name : line.ingredientId,
+          unit: ing ? ing.unit : '',
+          qty: (Number(line.qty) || 0) * factor * (1 + waste) * (Number(quantity) || 0)
+        };
+      }).filter(x => x.qty > 0);
+    },
+
+    availability(menuItemId, size) {
+      const bom = this.getBom(menuItemId);
+      if (!bom) {
+        return { managed: false, available: true, maxServings: null, limiting: null, lines: [] };
+      }
+      const per = this._explode(menuItemId, size, 1);
+      if (!per.length) {
+        return { managed: false, available: true, maxServings: null, limiting: null, lines: [] };
+      }
+      let max = Infinity;
+      let limiting = null;
+      const lines = [];
+      for (const line of per) {
+        const ing = this.getById(line.ingredientId);
+        if (!ing) {
+          return { managed: true, available: false, maxServings: 0, limiting: line.name, error: 'Thiếu nguyên liệu ' + line.name, lines: [] };
+        }
+        const possible = ing.stock > 0 ? Math.floor(ing.stock / line.qty + 1e-9) : 0;
+        if (possible < max) { max = possible; limiting = ing.name; }
+        lines.push({ ingredientId: ing.id, name: ing.name, unit: ing.unit, perServing: line.qty, stock: ing.stock, possible });
+      }
+      return {
+        managed: true,
+        available: max > 0,
+        maxServings: Number.isFinite(max) ? max : 0,
+        limiting,
+        lines
+      };
+    },
+
+    checkItems(items) {
+      const need = {};
+      for (const raw of (Array.isArray(items) ? items : [])) {
+        const menuItemId = raw.itemId || raw.id || raw.menuItemId;
+        const qty = Number(raw.qty || raw.quantity || 0);
+        if (!menuItemId || qty <= 0) continue;
+        for (const line of this._explode(menuItemId, raw.size, qty)) {
+          need[line.ingredientId] = (need[line.ingredientId] || 0) + line.qty;
+        }
+      }
+      const shortages = [];
+      for (const [id, qty] of Object.entries(need)) {
+        const ing = this.getById(id);
+        if (!ing) {
+          shortages.push({ ingredientId: id, name: id, needed: qty, stock: 0 });
+        } else if (Number(ing.stock) + 1e-9 < qty) {
+          shortages.push({ ingredientId: id, name: ing.name, unit: ing.unit, needed: qty, stock: Number(ing.stock) });
+        }
+      }
+      if (shortages.length) {
+        const s = shortages[0];
+        return {
+          ok: false,
+          error: `Không đủ ${s.name}: cần ${this._fmt(s.needed)}${s.unit || ''}, còn ${this._fmt(s.stock)}${s.unit || ''}`,
+          need, shortages
+        };
+      }
+      return { ok: true, need };
+    },
+
+    _fmt(n) {
+      const x = Math.round(Number(n) * 100) / 100;
+      return Number.isInteger(x) ? String(x) : x.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    },
+
+    deductOrder(orderId, items) {
+      const check = this.checkItems(items);
+      if (!check.ok) return check;
+      if (!Object.keys(check.need).length) return { ok: true, need: {}, lines: [] };
+
+      const list = this.getAll();
+      const touched = [];
+      for (const [id, qty] of Object.entries(check.need)) {
+        const i = list.findIndex(x => x.id === id);
+        if (i === -1) continue;
+        const before = Number(list[i].stock) || 0;
+        list[i].stock = Math.max(0, Math.round((before - qty) * 1000) / 1000);
+        list[i].updatedAt = new Date().toISOString();
+        touched.push({ ingredientId: id, name: list[i].name, unit: list[i].unit, qty: -qty, before, after: list[i].stock });
+      }
+      if (!this._write(this.ING_KEY, list)) return { ok: false, error: 'Không lưu được tồn kho' };
+      const log = this._read(this.LOG_KEY, []);
+      const at = new Date().toISOString();
+      for (const t of touched) {
+        log.unshift({ id: 'INV' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), at, type: 'sale', orderId, ...t });
+      }
+      this._write(this.LOG_KEY, log.slice(0, 500));
+      this._epoch++;
+      return { ok: true, need: check.need, lines: touched };
+    },
+
+    restoreOrder(orderId) {
+      const logs = this._read(this.LOG_KEY, []);
+      if (!Array.isArray(logs)) return { ok: false, error: 'Không có log kho' };
+      if (logs.some(l => l.orderId === orderId && l.type === 'refund')) {
+        return { ok: true, already: true };
+      }
+      const saleLines = logs.filter(l => l.orderId === orderId && l.type === 'sale');
+      if (!saleLines.length) return { ok: false, error: 'Đơn chưa trừ kho' };
+
+      const list = this.getAll();
+      const at = new Date().toISOString();
+      for (const s of saleLines) {
+        const i = list.findIndex(x => x.id === s.ingredientId);
+        if (i === -1) continue;
+        const before = Number(list[i].stock) || 0;
+        const add = Math.abs(Number(s.qty) || 0);
+        list[i].stock = Math.round((before + add) * 1000) / 1000;
+        list[i].updatedAt = at;
+        logs.unshift({ id: 'INV' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), at, type: 'refund', orderId, ingredientId: s.ingredientId, name: s.name, unit: s.unit, qty: add, before, after: list[i].stock });
+      }
+      this._write(this.ING_KEY, list);
+      this._write(this.LOG_KEY, logs.slice(0, 500));
+      this._epoch++;
+      return { ok: true, restored: saleLines.length };
+    },
+
+    importStock(id, qty, note) {
+      const amount = Number(qty);
+      if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: 'Số lượng nhập phải > 0' };
+      const list = this.getAll();
+      const i = list.findIndex(x => x.id === id);
+      if (i === -1) return { ok: false, error: 'Không tìm thấy nguyên liệu' };
+      const before = Number(list[i].stock) || 0;
+      list[i].stock = Math.round((before + amount) * 1000) / 1000;
+      list[i].updatedAt = new Date().toISOString();
+      if (!this._write(this.ING_KEY, list)) return { ok: false, error: 'Không lưu được tồn kho' };
+      const log = this._read(this.LOG_KEY, []);
+      log.unshift({ id: 'INV' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), at: new Date().toISOString(), type: 'import', ingredientId: id, name: list[i].name, unit: list[i].unit, qty: amount, before, after: list[i].stock, note: note || '' });
+      this._write(this.LOG_KEY, log.slice(0, 500));
+      this._epoch++;
+      return { ok: true, ingredient: list[i] };
+    },
+
+    adjustStock(id, newStock, note) {
+      const value = Number(newStock);
+      if (!Number.isFinite(value) || value < 0) return { ok: false, error: 'Tồn kho phải >= 0' };
+      const list = this.getAll();
+      const i = list.findIndex(x => x.id === id);
+      if (i === -1) return { ok: false, error: 'Không tìm thấy nguyên liệu' };
+      const before = Number(list[i].stock) || 0;
+      list[i].stock = Math.round(value * 1000) / 1000;
+      list[i].updatedAt = new Date().toISOString();
+      if (!this._write(this.ING_KEY, list)) return { ok: false, error: 'Không lưu được tồn kho' };
+      const log = this._read(this.LOG_KEY, []);
+      log.unshift({ id: 'INV' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), at: new Date().toISOString(), type: 'adjust', ingredientId: id, name: list[i].name, unit: list[i].unit, qty: list[i].stock - before, before, after: list[i].stock, note: note || '' });
+      this._write(this.LOG_KEY, log.slice(0, 500));
+      this._epoch++;
+      return { ok: true, ingredient: list[i] };
+    },
+
+    getLowStock() {
+      return this.getAll().filter(x => Number(x.stock) > 0 && Number(x.stock) <= Number(x.minStock || 0));
+    },
+
+    getOutOfStock() {
+      return this.getAll().filter(x => Number(x.stock) <= 0);
+    },
+
+    getValue() {
+      return this.getAll().reduce((s, x) => s + (Number(x.stock) || 0) * (Number(x.unitCost) || 0), 0);
+    },
+
+    resetDemo() {
+      this._write(this.ING_KEY, (typeof SEED_INGREDIENTS !== 'undefined' ? SEED_INGREDIENTS : []).map(x => ({ ...x })));
+      this._write(this.BOM_KEY, JSON.parse(JSON.stringify(typeof SEED_BOM !== 'undefined' ? SEED_BOM : {})));
+      this._write(this.LOG_KEY, []);
+      this._epoch++;
+      return { ok: true };
     }
   },
 
@@ -1095,6 +1390,10 @@ const API = {
       if (!o || o.status === 'cancelled') return null;
       if (!_policyAllow('order.cancel', { id: o.id, ownerId: o.userId })) return null;
       const res = this.update(id, { status: 'cancelled', cancelledAt: new Date().toISOString() });
+      if (res && o.inventoryDeducted && typeof API.ingredients !== 'undefined') {
+        API.ingredients.restoreOrder(id);
+        this.update(id, { inventoryDeducted: false, inventoryRestoredAt: new Date().toISOString() });
+      }
       _audit({ action: 'order.cancel', targetId: id, ok: true });
       return res;
     },
@@ -1166,8 +1465,17 @@ const API = {
         step: 0,
         createdAt: new Date().toISOString()
       };
+      // ⚡ Trừ kho tại thời điểm bán/đặt: một ly matcha cuối cùng sẽ làm món hết ngay.
+      const inv = (typeof API.ingredients !== 'undefined')
+        ? API.ingredients.deductOrder(o.id, quote.lines)
+        : { ok: true, lines: [] };
+      if (!inv.ok) return _setLastError(inv.error || 'Không đủ nguyên liệu');
+      o.inventoryDeducted = Array.isArray(inv.lines) && inv.lines.length > 0;
       list.push(o);
-      if (!storeSet(STORAGE_KEYS.orders, JSON.stringify(list))) return _setLastError('Không lưu được đơn hàng — bộ nhớ đầy hoặc bị chặn');
+      if (!storeSet(STORAGE_KEYS.orders, JSON.stringify(list))) {
+        if (o.inventoryDeducted) API.ingredients.restoreOrder(o.id);
+        return _setLastError('Không lưu được đơn hàng — bộ nhớ đầy hoặc bị chặn');
+      }
       this.setCurrent(o);
       _audit({ action: 'order.create', targetId: o.id, ok: true });
       return o;
@@ -1840,8 +2148,17 @@ const API = {
         createdAt: new Date().toISOString(),
         paidAt: new Date().toISOString()
       };
+      // ⚡ POS cũng trừ kho ngay khi thu tiền.
+      const inv = (typeof API.ingredients !== 'undefined')
+        ? API.ingredients.deductOrder(sale.id, quote.lines)
+        : { ok: true, lines: [] };
+      if (!inv.ok) throw new Error(inv.error || 'Không đủ nguyên liệu');
+      sale.inventoryDeducted = Array.isArray(inv.lines) && inv.lines.length > 0;
       list.push(sale);
-      if (!storeSet(STORAGE_KEYS.orders, JSON.stringify(list))) throw new Error('Không lưu được hoá đơn — bộ nhớ đầy hoặc bị chặn');
+      if (!storeSet(STORAGE_KEYS.orders, JSON.stringify(list))) {
+        if (sale.inventoryDeducted) API.ingredients.restoreOrder(sale.id);
+        throw new Error('Không lưu được hoá đơn — bộ nhớ đầy hoặc bị chặn');
+      }
       _audit({ action: 'pos.sale', targetId: sale.id, ok: true, code: method });
       return sale;
     },
