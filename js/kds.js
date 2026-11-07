@@ -19,6 +19,7 @@
   let micOn = false;
   let micStarting = false;
   let micManualOff = false;
+  let speaking = false;
   let mode = 'both';
   let pending = null;
   let lastAction = null;
@@ -123,6 +124,25 @@
     try { if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; } } catch (e) {}
   }
 
+  /* Tạm dừng nhận lệnh khi AI đang nói để mic không thu lại chính giọng AI.
+     Mic vẫn ở trạng thái bật; sau khi nói xong tự nghe lại. */
+  function pauseMicForSpeech() {
+    speaking = true;
+    try { if (recognition) recognition.abort(); } catch (e) {}
+    listening = false;
+    micStarting = false;
+    setMicButton();
+  }
+
+  function resumeMicAfterSpeech() {
+    speaking = false;
+    if (micOn && !micManualOff && !listening) {
+      setTimeout(() => {
+        if (micOn && !micManualOff && !listening && !speaking) startListening();
+      }, 260);
+    }
+  }
+
   function googleChunks(text) {
     const clean = String(text || '').replace(/\s+/g, ' ').trim();
     const parts = clean.split(/(?<=[.!?])\s+/);
@@ -145,21 +165,27 @@
     if (mode === 'screen' && !force) return;
     const chunks = googleChunks(text);
     if (!chunks.length) return;
+    pauseMicForSpeech();
     stopSpeech();
     let i = 0;
+    const finish = () => {
+      ttsAudio = null;
+      resumeMicAfterSpeech();
+    };
     const playNext = () => {
-      if (i >= chunks.length) return;
+      if (i >= chunks.length) { finish(); return; }
       const q = encodeURIComponent(chunks[i++]);
       const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + q;
       ttsAudio = new Audio(url);
       ttsAudio.onended = playNext;
       ttsAudio.onerror = () => {
         setStatusLine('Không phát được Google TTS (mạng?). Nội dung đã hiện trên màn hình.');
-        ttsAudio = null;
+        finish();
       };
       const p = ttsAudio.play();
       if (p && p.catch) p.catch(() => {
         setStatusLine('Trình duyệt chặn autoplay. Bấm “Test” hoặc “Đọc đơn tiếp theo” một lần.');
+        finish();
       });
     };
     playNext();
@@ -184,15 +210,20 @@
       return;
     }
     try {
+      pauseMicForSpeech();
       stopSpeech();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = v.lang || 'vi-VN';
       u.rate = 1.02;
       u.pitch = 1;
       u.voice = v;
+      u.onend = resumeMicAfterSpeech;
+      u.onerror = resumeMicAfterSpeech;
       window.speechSynthesis.speak(u);
       setStatusLine(voiceStatus());
-    } catch (e) {}
+    } catch (e) {
+      resumeMicAfterSpeech();
+    }
   }
 
   function setVoice(name) {
@@ -273,9 +304,11 @@
     const b = $('kdsMic');
     if (!b) return;
     b.classList.toggle('listening', micOn && listening);
-    b.textContent = micOn
-      ? (listening ? '⏹ Tắt mic — đang nghe' : '⏳ Đang khởi động mic…')
-      : '🎙 Bật mic';
+    b.textContent = speaking
+      ? '🔊 AI đang nói…'
+      : (micOn
+        ? (listening ? '⏹ Tắt mic — đang nghe' : '⏳ Đang khởi động mic…')
+        : '🎙 Bật mic');
   }
 
   function startListening() {
@@ -285,6 +318,7 @@
       return;
     }
     if (listening || micStarting) return;
+    if (speaking) return;
     micOn = true;
     micManualOff = false;
     micStarting = true;
@@ -292,20 +326,28 @@
     if (!recognition) {
       recognition = new SR();
       recognition.lang = 'vi-VN';
-      recognition.continuous = true;
+      recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      recognition.maxAlternatives = 3;
       recognition.onresult = e => {
-        const text = e.results[0][0].transcript;
+        const result = e.results[0];
+        let text = result[0] ? result[0].transcript : '';
+        // Chọn alternative khớp lệnh tốt nhất nếu trình duyệt trả nhiều biến thể.
+        for (let i = 1; i < result.length; i++) {
+          const candidate = result[i] && result[i].transcript;
+          if (candidate && looksLikeCommand(candidate)) { text = candidate; break; }
+        }
         log('user', text);
         handleCommand(text);
       };
       recognition.onerror = e => {
+        if (e.error === 'aborted' || speaking) return;
         const msg = e.error === 'not-allowed' ? 'Chưa cấp quyền micro. Bấm cho phép trên trình duyệt.' : 'Lỗi mic: ' + e.error;
         setStatusLine(msg);
         log('sys', msg);
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
           micOn = false;
+          micManuallyOff = true;
           micStarting = false;
           setMicButton();
         }
@@ -314,11 +356,12 @@
         listening = false;
         micStarting = false;
         setMicButton();
+        if (speaking) return;
         // Mic luôn bật: tự khởi động lại sau mỗi lần trình duyệt tự ngắt.
         if (micOn) {
           setTimeout(() => {
-            if (micOn && !listening && !micStarting) startListening();
-          }, 450);
+            if (micOn && !listening && !micStarting && !speaking) startListening();
+          }, 280);
         }
       };
     }
@@ -357,8 +400,12 @@
     }
   }
 
-  function findQueueOrder(code) {
+  function findQueueOrder(code, table) {
     const queue = API.orders.getKdsQueue();
+    if (table) {
+      const byTable = queue.find(o => String(o.tableId || '').toUpperCase() === table);
+      if (byTable) return byTable;
+    }
     if (!code) return queue[0] || null;
     return queue.find(o => String(o.kitchenCode || '').toUpperCase() === code) ||
       queue.find(o => String(o.id || '').toUpperCase().endsWith(code)) || null;
@@ -367,6 +414,11 @@
   function extractCode(text) {
     const m = String(text || '').toUpperCase().match(/\bA\s?(\d{1,3})\b/);
     return m ? 'A' + m[1] : null;
+  }
+
+  function extractTable(text) {
+    const m = normalize(text).match(/\bban\s+([a-z]\s?\d{1,2})\b/);
+    return m ? m[1].replace(/\s+/g, '').toUpperCase() : null;
   }
 
   function executePending() {
@@ -399,9 +451,16 @@
     }
   }
 
+  function looksLikeCommand(s) {
+    const t = normalize(s);
+    return /(don tiep theo|tiep theo|bat dau|xong|hoan thanh|da giao|phuc vu|het sua|hoan tac|tat mic|bat mic|huy don|xac nhan)/.test(t) ||
+      /\b(A|a)\s?\d{1,3}\b/.test(String(s));
+  }
+
   function handleCommand(raw) {
-    const text = normalize(raw);
+    let text = normalize(raw);
     if (!text) return;
+    text = text.replace(/^(u|uh|o|day|nhe|vay|thi)\s+/, '');
 
     if (pending && /^(xac nhan|dong y|dung roi|ok)\b/.test(text)) {
       executePending();
@@ -450,6 +509,7 @@
     }
 
     const code = extractCode(text);
+    const table = extractTable(text);
     const statusMap = [
       { re: /^(bat dau|start)\b/, status: 'preparing' },
       { re: /^(xong|hoan thanh|done)\b/, status: 'ready' },
@@ -457,7 +517,12 @@
     ];
     for (const item of statusMap) {
       if (item.re.test(text)) {
-        const o = findQueueOrder(code);
+        const queue = API.orders.getKdsQueue();
+        if (!code && !table && queue.length > 1) {
+          speak(`Có ${queue.length} đơn. Anh/chị đọc mã đơn, ví dụ A12, hoặc nói “bàn A1”.`);
+          return;
+        }
+        const o = findQueueOrder(code, table);
         if (!o) { speak('Không tìm thấy đơn trong hàng đợi.'); return; }
         setStatus(o.id, item.status);
         return;
@@ -465,7 +530,12 @@
     }
 
     if (/^(huy|huy don)\b/.test(text)) {
-      const o = findQueueOrder(code);
+      const queue = API.orders.getKdsQueue();
+      if (!code && !table && queue.length > 1) {
+        speak(`Có ${queue.length} đơn. Anh/chị đọc mã đơn cần hủy, ví dụ A12.`);
+        return;
+      }
+      const o = findQueueOrder(code, table);
       if (!o) { speak('Không tìm thấy đơn để hủy.'); return; }
       pending = { type: 'cancel', orderId: o.id };
       speak(`Đơn ${orderLabel(o)}${o.tableId ? ', bàn ' + o.tableId : ''}, ${itemText(o)}. Xác nhận hủy?`);
