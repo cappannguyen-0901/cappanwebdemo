@@ -660,11 +660,12 @@ Trong đó:
 Ví dụ:
 
 ```text
-Matcha M:
-3g × 1 × 1.03 × 1 = 3.09g
+Matcha (wasteRate = 0):
+M: 3g × 1 × 1 × 1 = 3g
+L: 3g × 1.25 × 1 × 1 = 3.75g
 
-Matcha L:
-3g × 1.25 × 1.03 × 1 = 3.86g
+Latte (wasteRate = 0.05):
+M: 18g × 1 × 1.05 × 1 = 18.9g
 ```
 
 ## C2.3. Tính số ly còn bán được
