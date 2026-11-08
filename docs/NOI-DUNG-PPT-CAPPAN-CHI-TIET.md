@@ -676,6 +676,67 @@ Static build 26 trang
 
 ---
 
+# Slide 19B — BOM: vì sao món tự hết?
+
+## Nội dung trên slide
+
+```text
+BOM Matcha:
+1 ly = 3g bột matcha
+
+Tồn kho: 3g
+→ maxServings = floor(3 / 3) = 1
+
+Bán 1 ly:
+stock = 0g
+→ ingredientAvailable = false
+→ menu.inStock = false
+```
+
+## Công thức
+
+```text
+qty = line.qty × sizeFactor × (1 + wasteRate) × quantity
+maxServings = min(floor(stock / qty)) trên mọi dòng BOM
+```
+
+## Chuỗi tự động
+
+```text
+Order
+→ checkItems
+→ deductOrder
+→ stock giảm
+→ menu.getAll() tính lại
+→ inStock = false
+→ UI / AI / Order Board đều chặn
+```
+
+## Ví dụ
+
+```text
+Còn 3g matcha
+Khách order 1 Matcha
+→ bán được
+→ tồn 0g
+→ menu khoá Matcha
+→ automation log ingredient_out
+```
+
+## Lời nói
+
+> “Món không tự hết. BOM và tồn kho làm nó hết.”
+
+## Điểm cần nhấn
+
+- `maxServings` lấy theo nguyên liệu **eo hẹp nhất**.
+- Size L tốn 1.25 lần.
+- Hao hụt làm tăng lượng cần.
+- Món không có BOM không bị khoá tự động.
+- Automation chỉ log/gợi ý, không tự nhập kho.
+
+---
+
 # Slide 20 — Demo sản phẩm
 
 ## Chuẩn bị

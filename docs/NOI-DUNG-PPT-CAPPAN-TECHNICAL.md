@@ -612,6 +612,261 @@ Giới hạn vòng lặp để tránh treo.
 
 ---
 
+# PHẦN C2 — BOM: CƠ CHẾ TỰ ĐÁNH DẤU HẾT MÓN
+
+Đây là phần dễ bị bỏ sót nhất khi trình bày: **món không tự nhiên “hết”**. Hệ thống tính từ BOM (Bill of Materials) và tồn kho nguyên liệu.
+
+## C2.1. BOM là gì trong CAPPAN?
+
+BOM là định mức nguyên liệu cho một món:
+
+```js
+{
+  M003: {
+    lines: [
+      { ingredientId: 'I_MATCHA', qty: 3 }
+    ],
+    sizes: { M: 1, L: 1.25 },
+    wasteRate: 0.03
+  }
+}
+```
+
+Trong demo Matcha:
+
+```text
+I_MATCHA: stock = 3g
+BOM M003: 3g / ly
+→ maxServings = floor(3 / 3) = 1
+```
+
+## C2.2. Công thức định lượng
+
+`API.ingredients._explode(menuItemId, size, quantity)`:
+
+```text
+qty = line.qty
+    × sizeFactor
+    × (1 + wasteRate)
+    × quantity
+```
+
+Trong đó:
+
+- `sizeFactor`: M = 1; L = 1.25 nếu BOM không khai báo riêng;
+- `wasteRate`: hao hụt định mức;
+- `quantity`: số ly.
+
+Ví dụ:
+
+```text
+Matcha M:
+3g × 1 × 1.03 × 1 = 3.09g
+
+Matcha L:
+3g × 1.25 × 1.03 × 1 = 3.86g
+```
+
+## C2.3. Tính số ly còn bán được
+
+`API.ingredients.availability(menuItemId, size)`:
+
+```text
+per = _explode(menuItemId, size, 1)
+max = Infinity
+for each line:
+  possible = stock > 0
+    ? floor(stock / line.qty)
+    : 0
+  max = min(max, possible)
+  limiting = ingredient làm max nhỏ nhất
+available = max > 0
+```
+
+Ví dụ:
+
+```text
+Sữa còn 5000ml, mỗi ly 150ml → 33 ly
+Matcha còn 3g, mỗi ly 3g → 1 ly
+Max = min(33, 1) = 1
+→ limitingIngredient = Bột matcha
+```
+
+## C2.4. Menu áp BOM lên trạng thái món
+
+`API.menu.getAll()`:
+
+```js
+merged.inStock = manualInStock;
+
+const inv = API.ingredients.availability(m.id);
+if (inv.managed) {
+  merged.ingredientAvailable = inv.available;
+  merged.maxServings = inv.maxServings;
+  merged.limitingIngredient = inv.limiting;
+  merged.inventoryManaged = true;
+  merged.inStock = merged.inStock && inv.available;
+}
+```
+
+Điểm quan trọng:
+
+```text
+inStock = cờ thủ công AND nguyên liệu còn đủ
+```
+
+Nghĩa là:
+
+- nhân viên đánh dấu hết tay → vẫn hết;
+- nguyên liệu hết → tự động hết;
+- cả hai cùng đúng → mới bán được.
+
+Món không có BOM:
+
+```text
+inventoryManaged = false
+ingredientAvailable = true
+inStock = cờ thủ công
+```
+
+## C2.5. Kiểm tra khi đặt món
+
+`API.ingredients.checkItems(items)`:
+
+```text
+need = {}
+for each order line:
+  for each BOM line:
+    need[ingredientId] += qty
+
+for each ingredient:
+  if stock < need:
+    return { ok: false, error: 'Không đủ ...' }
+```
+
+Ví dụ:
+
+```text
+Order 2 Matcha
+need I_MATCHA = 6g
+stock = 3g
+→ checkItems false
+→ order bị chặn
+```
+
+## C2.6. Trừ kho khi bán
+
+`API.ingredients.deductOrder(orderId, items)`:
+
+```text
+1. checkItems(items)
+2. nếu thiếu → return false
+3. getAll ingredients
+4. stock = max(0, stock - qty)
+5. ghi inventory log
+6. order.inventoryDeducted = true
+```
+
+Nếu lưu order thất bại:
+
+```text
+restoreOrder(orderId)
+```
+
+Nếu hủy order:
+
+```text
+restoreOrder(orderId)
+```
+
+## C2.7. Ví dụ Matcha cuối cùng
+
+```text
+Trước:
+I_MATCHA.stock = 3g
+M003.maxServings = 1
+M003.inStock = true
+
+Khách order 1 Matcha:
+→ checkItems ok
+→ deductOrder: stock = 0g
+→ menu.getAll():
+   availability = 0
+   ingredientAvailable = false
+   maxServings = 0
+   inStock = false
+
+Sau:
+Menu Matcha bị khoá
+UI không cho thêm
+AI/get_menu thấy inStock=false
+Automation log ingredient_out
+```
+
+## C2.8. Automation và BOM
+
+`js/automation.js` — `syncIngredientRule()`:
+
+```text
+out: !ingredientAvailable
+low: maxServings <= 2
+ok: còn hàng
+```
+
+Chỉ log khi trạng thái đổi:
+
+```text
+ingredient_out
+ingredient_low
+ingredient_restore
+```
+
+Automation **không tự nhập kho**. Nó chỉ:
+
+- phát hiện;
+- log;
+- phát tín hiệu UI;
+- gợi ý nhập hàng.
+
+## C2.9. Các trường hợp biên
+
+| Trường hợp | Kết quả |
+|---|---|
+| Món không có BOM | `inventoryManaged=false`, bán theo cờ thủ công |
+| Thiếu một nguyên liệu | `available=false`, `maxServings=0`, `limiting` ghi nguyên liệu thiếu |
+| Nhiều dòng BOM | `maxServings = min` của tất cả dòng |
+| Size L | `sizeFactor=1.25`, tốn nhiều nguyên liệu hơn |
+| Hao hụt | `wasteRate` làm qty tăng |
+| Nhân viên đánh dấu hết tay | Vẫn hết dù kho còn |
+| Kho có lại | `ingredientAvailable=true`, nhưng cờ thủ công vẫn có thể chặn |
+| Hủy order | `restoreOrder` hoàn kho |
+
+## C2.10. Slide gợi ý cho phần BOM
+
+```text
+Tiêu đề: BOM — vì sao món tự hết?
+
+BOM: 1 Matcha = 3g bột
+Tồn: 3g
+→ maxServings = floor(3/3) = 1
+
+Bán 1 ly:
+stock = 0
+→ ingredientAvailable = false
+→ menu.inStock = false
+→ UI/AI/Order đều chặn
+
+Automation:
+ingredient_out
+gợi ý nhập hàng
+```
+
+### Câu chốt
+
+> “Món không tự hết. BOM và tồn kho làm nó hết.”
+
+---
+
 # PHẦN C — AUTOMATION
 
 ## C.1. Kiến trúc
